@@ -21,6 +21,7 @@
                             {
                                 <div class="bb:text-xs bb:text-muted-foreground">@library.Name</div>
                             }
+                            <SqlDialectBadges Dialects="library.SqlDialects" />
                         </div>
                         <BbButton Variant="ButtonVariant.Default" Size="ButtonSize.Small" OnClick="@(() => SelectAsync(library))">
                             @Localizer["App.CriteriaManager.SelectCriterionButton"]

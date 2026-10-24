@@ -22,6 +22,17 @@ public static class SqlDialectExtensions
             _ => throw new ArgumentOutOfRangeException(nameof(dialect), dialect, null),
         };
 
+    /// <summary>
+    /// Display name for a content type's dialect parameter (e.g. "duckdb" is "DuckDB") - the raw
+    /// value for a dialect this app can't author criteria in, but another Library source (e.g.
+    /// superset-library-sync) may still have written.
+    /// </summary>
+    public static string DisplayNameOfContentTypeParameter(string dialectParameter) =>
+        Enum.GetValues<SqlDialect>()
+            .Where(d => d.ContentTypeParameter() == dialectParameter)
+            .Select(d => d.DisplayName())
+            .FirstOrDefault(dialectParameter);
+
     public static string DisplayName(this SqlDialect dialect) =>
         dialect switch
         {

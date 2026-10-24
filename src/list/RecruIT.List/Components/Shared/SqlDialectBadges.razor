@@ -1,0 +1,22 @@
+@inject IStringLocalizer<SharedResources> Localizer
+
+@* A criterion Library's SQL dialects (see LibrarySummaryDto.SqlDialects) - nothing for one whose SQL
+   commits to no dialect. *@
+@if (Dialects.Count > 0)
+{
+    <div class="bb:mt-1.5 bb:flex bb:flex-wrap bb:items-center bb:gap-1" title="@Localizer["App.CriteriaManager.SqlDialectsTooltip"]">
+        <span class="bb:sr-only">@Localizer["App.CriteriaManager.SqlDialectsTooltip"]</span>
+        @foreach (var dialect in Dialects)
+        {
+            <BbBadge Variant="BadgeVariant.Outline">
+                <LucideIcon Name="database" Size="12" Class="bb:me-1" />
+                @SqlDialectExtensions.DisplayNameOfContentTypeParameter(dialect)
+            </BbBadge>
+        }
+    </div>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<string> Dialects { get; set; }
+}

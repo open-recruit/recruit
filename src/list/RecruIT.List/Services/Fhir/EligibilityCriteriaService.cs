@@ -129,6 +129,7 @@ public sealed class EligibilityCriteriaService(
                 l.Description,
                 l.Status?.ToString(),
                 l.GetSqlText(),
+                l.GetSqlDialects(),
                 l.Meta?.LastUpdated,
                 [
                     .. studyNamesByLibraryId[l.Id!]

@@ -4,7 +4,9 @@ namespace RecruIT.List.Models;
 /// Read-only summary of an existing eligibility-criterion Library resource, for the Criteria
 /// Manager's catalog view. UsedByStudyDisplayNames is derived by resolving which Group(s)
 /// reference this Library via Group.characteristic, then which ResearchStudy(ies) enroll those
-/// Group(s) - empty when the Library isn't currently referenced by any study.
+/// Group(s) - empty when the Library isn't currently referenced by any study. SqlDialects are the
+/// dialect parameters of its application/sql;dialect=&lt;dialect&gt; content, e.g. "trino" (see
+/// FhirBundleHelpers.GetSqlDialects).
 /// </summary>
 public sealed record LibrarySummaryDto(
     string Id,
@@ -13,6 +15,7 @@ public sealed record LibrarySummaryDto(
     string? Description,
     string? Status,
     string? Sql,
+    IReadOnlyList<string> SqlDialects,
     DateTimeOffset? LastUpdated,
     IReadOnlyList<string> UsedByStudyDisplayNames
 );

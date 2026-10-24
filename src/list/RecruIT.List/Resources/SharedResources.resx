@@ -628,6 +628,9 @@
   <data name="App.CriteriaManager.LibraryNotUsedLabel" xml:space="preserve">
     <value>Not currently used by any study</value>
   </data>
+  <data name="App.CriteriaManager.SqlDialectsTooltip" xml:space="preserve">
+    <value>SQL dialects this criterion's SQL is written for</value>
+  </data>
   <data name="App.CriteriaManager.LastUpdatedLabel" xml:space="preserve">
     <value>Updated</value>
   </data>
