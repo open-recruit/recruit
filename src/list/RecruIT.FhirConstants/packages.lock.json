@@ -4,11 +4,11 @@
     "net10.0": {
       "Hl7.Fhir.R4": {
         "type": "Direct",
-        "requested": "[6.6.0, )",
-        "resolved": "6.6.0",
-        "contentHash": "++RpQMkqeVA2Nh99nJKt+gN2z3uBi+uusro+MbY6MiBzeC/IhQp/2LLX7lSd0MHGfILEZqVBZKgYVcRQcYtsEg==",
+        "requested": "[6.8.0, )",
+        "resolved": "6.8.0",
+        "contentHash": "035L7rdwPDzkKbd6aiDMVko6lGzqys+w+h6Iwmpqna3dsC4HUeDUV49mhtBQxfkUH8KuQzxOd4h+i9hNuIEbgg==",
         "dependencies": {
-          "Hl7.Fhir.Conformance": "6.6.0"
+          "Hl7.Fhir.Conformance": "6.8.0"
         }
       },
       "Fhir.Metrics": {
@@ -18,8 +18,8 @@
       },
       "Hl7.Fhir.Base": {
         "type": "Transitive",
-        "resolved": "6.6.0",
-        "contentHash": "LS4RUWvKAZ6JsR5kPQuO1lTRlN/bSEI9G06mNUOXNR1iR0TJarPcqzB8Me3EVTuuuzOyW71U1CWsULoOAHbp3w==",
+        "resolved": "6.8.0",
+        "contentHash": "0EgvzJLIiT0/Jo9GvWMrqFUjIE+UVTgpu5TczUr39YF/qltC30yNovYwQBQUSCz0lGPWBe8kcEPiCvzA2+fU/g==",
         "dependencies": {
           "Fhir.Metrics": "1.4.0",
           "Microsoft.Extensions.Caching.Memory": "10.0.9",
@@ -29,10 +29,10 @@
       },
       "Hl7.Fhir.Conformance": {
         "type": "Transitive",
-        "resolved": "6.6.0",
-        "contentHash": "NMf9T6ap3T5QIMup87edkppZA8feWf+6XCIWxHKWnbfNyUZeyMcdOzA4OgR48Rp4dxvMyG67tNyDVDwdN+yIvA==",
+        "resolved": "6.8.0",
+        "contentHash": "5qqcuGF0jm1yW1FaDJdxRzKGOwEkn+b4LT1IYbgtP9zzZMXYhZ0nHFZy8Cz9TwvxOOQmw5VixGfCMCVUsDog5g==",
         "dependencies": {
-          "Hl7.Fhir.Base": "6.6.0"
+          "Hl7.Fhir.Base": "6.8.0"
         }
       },
       "Microsoft.Extensions.Caching.Abstractions": {

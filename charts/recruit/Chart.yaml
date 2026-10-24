@@ -21,7 +21,7 @@ dependencies:
     alias: fhirserver
     name: hapi-fhir-jpaserver
     repository: https://hapifhir.github.io/hapi-fhir-jpaserver-starter
-    version: 0.24.0
+    version: 0.25.0
   - condition: maildev.enabled
     name: maildev
     repository: https://maildev.github.io/helm/
