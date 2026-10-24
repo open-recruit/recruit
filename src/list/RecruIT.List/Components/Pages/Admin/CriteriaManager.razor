@@ -54,16 +54,8 @@ else
                             <div class="bb:flex bb:flex-col bb:gap-4">
                                 @foreach (var library in FilteredLibraries)
                                 {
-                                    <div class="bb:rounded-md bb:border bb:p-3">
-                                        <div class="bb:flex bb:flex-wrap bb:items-center bb:justify-between bb:gap-2">
-                                            <div>
-                                                <div class="bb:font-medium">@(library.Title ?? library.Id)</div>
-                                                @if (!string.IsNullOrWhiteSpace(library.Name))
-                                                {
-                                                    <div class="bb:text-xs bb:text-muted-foreground">@library.Name</div>
-                                                }
-                                                <SqlDialectBadges Dialects="library.SqlDialects" />
-                                            </div>
+                                    <LibraryCard Library="library">
+                                        <Aside>
                                             <div class="bb:flex bb:flex-col bb:items-end bb:gap-1">
                                                 @if (library.Status is not null)
                                                 {
@@ -76,35 +68,24 @@ else
                                                     </span>
                                                 }
                                             </div>
-                                        </div>
-                                        @if (!string.IsNullOrWhiteSpace(library.Description))
-                                        {
-                                            <p class="bb:mt-1 bb:text-sm bb:text-muted-foreground">@library.Description</p>
-                                        }
-                                        <div class="bb:mt-2 bb:flex bb:flex-wrap bb:items-center bb:gap-1 bb:text-xs bb:text-muted-foreground">
-                                            <span>@(Localizer["App.CriteriaManager.LibraryUsedByLabel"]):</span>
-                                            @if (library.UsedByStudyDisplayNames.Count == 0)
-                                            {
-                                                <span>@Localizer["App.CriteriaManager.LibraryNotUsedLabel"]</span>
-                                            }
-                                            else
-                                            {
-                                                @foreach (var studyName in library.UsedByStudyDisplayNames)
+                                        </Aside>
+                                        <ChildContent>
+                                            <div class="bb:mt-2 bb:flex bb:flex-wrap bb:items-center bb:gap-1 bb:text-xs bb:text-muted-foreground">
+                                                <span>@(Localizer["App.CriteriaManager.LibraryUsedByLabel"]):</span>
+                                                @if (library.UsedByStudyDisplayNames.Count == 0)
                                                 {
-                                                    <BbBadge Variant="BadgeVariant.Outline">@studyName</BbBadge>
+                                                    <span>@Localizer["App.CriteriaManager.LibraryNotUsedLabel"]</span>
                                                 }
-                                            }
-                                        </div>
-                                        @if (!string.IsNullOrWhiteSpace(library.Sql))
-                                        {
-                                            <details class="bb:mt-3">
-                                                <summary class="bb:cursor-pointer bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground bb:hover:text-foreground">
-                                                    @Localizer["App.CriteriaManager.CriterionSqlLabel"]
-                                                </summary>
-                                                <pre class="bb:mt-2 bb:max-h-64 bb:overflow-auto bb:rounded-md bb:border bb:bg-muted bb:p-3 bb:text-xs"><code>@library.Sql</code></pre>
-                                            </details>
-                                        }
-                                    </div>
+                                                else
+                                                {
+                                                    @foreach (var studyName in library.UsedByStudyDisplayNames)
+                                                    {
+                                                        <BbBadge Variant="BadgeVariant.Outline">@studyName</BbBadge>
+                                                    }
+                                                }
+                                            </div>
+                                        </ChildContent>
+                                    </LibraryCard>
                                 }
                             </div>
                         }
@@ -283,16 +264,11 @@ else
         );
 
     private List<LibrarySummaryDto> FilteredLibraries =>
-        [.. _libraries.Where(MatchesLibrarySearch)];
+        [.. _libraries.Where(l => l.Matches(_librarySearch))];
 
     private List<CriterionDraft> InclusionCriteria => [.. _criteria.Where(c => !c.Exclude)];
 
     private List<CriterionDraft> ExclusionCriteria => [.. _criteria.Where(c => c.Exclude)];
-
-    private bool MatchesLibrarySearch(LibrarySummaryDto library) =>
-        string.IsNullOrWhiteSpace(_librarySearch)
-        || (library.Title?.Contains(_librarySearch, StringComparison.OrdinalIgnoreCase) ?? false)
-        || library.Id.Contains(_librarySearch, StringComparison.OrdinalIgnoreCase);
 
     protected override async Task OnInitializedAsync()
     {

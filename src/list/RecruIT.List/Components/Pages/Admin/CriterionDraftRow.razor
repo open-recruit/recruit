@@ -44,15 +44,7 @@
 
     @if (IsFromLibrary)
     {
-        @if (!string.IsNullOrWhiteSpace(Criterion.Sql))
-        {
-            <details class="bb:mt-3">
-                <summary class="bb:cursor-pointer bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground bb:hover:text-foreground">
-                    @Localizer["App.CriteriaManager.CriterionSqlLabel"]
-                </summary>
-                <pre class="bb:mt-2 bb:max-h-64 bb:overflow-auto bb:rounded-md bb:border bb:bg-muted bb:p-3 bb:text-xs"><code>@Criterion.Sql</code></pre>
-            </details>
-        }
+        <SqlDisclosure Sql="@Criterion.Sql" />
     }
     else
     {

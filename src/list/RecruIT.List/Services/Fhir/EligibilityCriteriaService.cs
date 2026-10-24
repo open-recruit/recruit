@@ -382,17 +382,13 @@ public sealed class EligibilityCriteriaService(
                     // chained discovery search looks for - without it this Library would be
                     // invisible to both the catalog and the poll job once actually persisted.
                     Type = new CodeableConcept(SqlQueryLibraryTypeSystem, SqlQueryLibraryTypeCode),
-                    // Same shape as superset-library-sync's Libraries: a dialect-agnostic
-                    // application/sql content first (which GetSqlText reads back), plus the same SQL
-                    // as application/sql;dialect=<dialect>, which query-sql-on-fhir runs directly
-                    // when it matches its configured dialect.
+                    // Same shape as superset-library-sync's Libraries (see SqlContentType): the
+                    // dialect-agnostic content first, which GetSqlText reads back, then the same SQL
+                    // for the criterion's dialect.
                     Content =
                     [
-                        BuildSqlAttachment("application/sql", criterion.Sql),
-                        BuildSqlAttachment(
-                            $"application/sql;dialect={criterion.Dialect.ContentTypeParameter()}",
-                            criterion.Sql
-                        ),
+                        BuildSqlAttachment(SqlContentType.DialectAgnostic, criterion.Sql),
+                        BuildSqlAttachment(SqlContentType.For(criterion.Dialect), criterion.Sql),
                     ],
                 };
                 library.Identifier.Add(

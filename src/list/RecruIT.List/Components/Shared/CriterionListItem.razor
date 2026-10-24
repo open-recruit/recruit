@@ -8,7 +8,7 @@
             <BbPopoverTrigger AsChild="false" Class="bb:text-start bb:hover:underline">@Criterion.DisplayText</BbPopoverTrigger>
             <BbPopoverContent Side="PopoverSide.Bottom" Align="PopoverAlign.Start" style="width: 36rem;">
                 <span class="bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground">@Localizer["App.PatientList.CriterionSqlLabel"]</span>
-                <pre class="bb:mt-2 bb:rounded-md bb:border bb:bg-muted bb:p-2 bb:text-xs" style="max-height: 16rem; overflow: auto;"><code>@Criterion.Sql</code></pre>
+                <SqlCodeBlock Sql="@Criterion.Sql" />
             </BbPopoverContent>
         </BbPopover>
     }

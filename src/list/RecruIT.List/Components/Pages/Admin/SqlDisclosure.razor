@@ -1,0 +1,17 @@
+@inject IStringLocalizer<SharedResources> Localizer
+
+@* A criterion's SQL, collapsed behind its label - nothing at all when there's no SQL. *@
+@if (!string.IsNullOrWhiteSpace(Sql))
+{
+    <details class="bb:mt-3">
+        <summary class="bb:cursor-pointer bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground bb:hover:text-foreground">
+            @Localizer["App.CriteriaManager.CriterionSqlLabel"]
+        </summary>
+        <SqlCodeBlock Sql="@Sql" />
+    </details>
+}
+
+@code {
+    [Parameter, EditorRequired]
+    public required string? Sql { get; set; }
+}

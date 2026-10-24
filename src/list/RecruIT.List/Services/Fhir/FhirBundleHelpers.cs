@@ -82,28 +82,15 @@ internal static class FhirBundleHelpers
             : null;
 
     /// <summary>
-    /// The SQL dialects a criterion Library has content for, i.e. the dialect parameter of each
-    /// application/sql;dialect=&lt;dialect&gt; attachment, in content order. Matched the way
-    /// query-sql-on-fhir matches them (ignoring whitespace and case), since it runs that content
-    /// directly when the dialect is its configured one. Plain application/sql content commits to no
-    /// dialect, so isn't one.
+    /// The dialects a criterion Library has SQL content for, in content order - see SqlContentType.
     /// </summary>
     public static IReadOnlyList<string> GetSqlDialects(this Library library) =>
         [
             .. library
-                .Content.Select(c =>
-                    string.Concat(
-                            (c.ContentType ?? string.Empty).Where(ch => !char.IsWhiteSpace(ch))
-                        )
-                        .ToLowerInvariant()
-                )
-                .Where(ct => ct.StartsWith(SqlDialectContentTypePrefix, StringComparison.Ordinal))
-                .Select(ct => ct[SqlDialectContentTypePrefix.Length..])
-                .Where(dialect => dialect.Length > 0)
+                .Content.Select(c => SqlContentType.DialectOf(c.ContentType))
+                .OfType<string>()
                 .Distinct(),
         ];
-
-    private const string SqlDialectContentTypePrefix = "application/sql;dialect=";
 
     public static string? GetMedicalRecordNumber(this Patient patient) =>
         patient.Identifier.FirstOrDefault(IsMedicalRecordNumber)?.Value;

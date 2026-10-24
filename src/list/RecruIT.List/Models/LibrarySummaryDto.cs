@@ -18,4 +18,11 @@ public sealed record LibrarySummaryDto(
     IReadOnlyList<string> SqlDialects,
     DateTimeOffset? LastUpdated,
     IReadOnlyList<string> UsedByStudyDisplayNames
-);
+)
+{
+    /// <summary>Whether a catalog search matches this Library's title or id - a blank one matches all.</summary>
+    public bool Matches(string search) =>
+        string.IsNullOrWhiteSpace(search)
+        || (Title?.Contains(search, StringComparison.OrdinalIgnoreCase) ?? false)
+        || Id.Contains(search, StringComparison.OrdinalIgnoreCase);
+}
