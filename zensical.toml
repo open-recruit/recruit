@@ -20,6 +20,7 @@ nav = [
     "getting-started/introduction.md",
     "getting-started/installation.md",
     "getting-started/creating-your-first-study.md",
+    "getting-started/authoring-eligibility-criteria.md",
   ] },
   { "Deployment" = [
     "deployment/compose.md",
