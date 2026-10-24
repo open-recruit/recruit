@@ -81,6 +81,17 @@ internal static class FhirBundleHelpers
             ? Encoding.UTF8.GetString(data)
             : null;
 
+    /// <summary>
+    /// The dialects a criterion Library has SQL content for, in content order - see SqlContentType.
+    /// </summary>
+    public static IReadOnlyList<string> GetSqlDialects(this Library library) =>
+        [
+            .. library
+                .Content.Select(c => SqlContentType.DialectOf(c.ContentType))
+                .OfType<string>()
+                .Distinct(),
+        ];
+
     public static string? GetMedicalRecordNumber(this Patient patient) =>
         patient.Identifier.FirstOrDefault(IsMedicalRecordNumber)?.Value;
 

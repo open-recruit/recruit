@@ -789,6 +789,9 @@
   <data name="App.CriteriaManager.LibraryNotUsedLabel" xml:space="preserve">
     <value>Wird derzeit von keiner Studie verwendet</value>
   </data>
+  <data name="App.CriteriaManager.SqlDialectsTooltip" xml:space="preserve">
+    <value>SQL-Dialekte, für die das SQL dieses Kriteriums geschrieben ist</value>
+  </data>
   <data name="App.CriteriaManager.LastUpdatedLabel" xml:space="preserve">
     <value>Aktualisiert</value>
   </data>

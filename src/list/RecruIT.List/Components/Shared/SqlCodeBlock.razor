@@ -1,0 +1,7 @@
+@* A criterion's SQL, as everywhere it's shown read-only - capped in height, scrolling beyond that. *@
+<pre class="bb:mt-2 bb:max-h-64 bb:overflow-auto bb:rounded-md bb:border bb:bg-muted bb:p-3 bb:text-xs"><code>@Sql</code></pre>
+
+@code {
+    [Parameter, EditorRequired]
+    public required string Sql { get; set; }
+}

@@ -1,0 +1,33 @@
+@* One criterion Library, as both the Criteria Manager's catalog and its library picker list them. *@
+<div class="bb:rounded-md bb:border bb:p-3">
+    <div class="bb:flex bb:flex-wrap bb:items-center bb:justify-between bb:gap-2">
+        <div>
+            <div class="bb:font-medium">@(Library.Title ?? Library.Id)</div>
+            @if (!string.IsNullOrWhiteSpace(Library.Name))
+            {
+                <div class="bb:text-xs bb:text-muted-foreground">@Library.Name</div>
+            }
+            <SqlDialectBadges Dialects="Library.SqlDialects" />
+        </div>
+        @Aside
+    </div>
+    @if (!string.IsNullOrWhiteSpace(Library.Description))
+    {
+        <p class="bb:mt-1 bb:text-sm bb:text-muted-foreground">@Library.Description</p>
+    }
+    @ChildContent
+    <SqlDisclosure Sql="@Library.Sql" />
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public required LibrarySummaryDto Library { get; set; }
+
+    /// <summary>Opposite the title - e.g. the catalog's status, or the picker's Select button.</summary>
+    [Parameter]
+    public RenderFragment? Aside { get; set; }
+
+    /// <summary>Between the description and the SQL - e.g. the catalog's "used by" studies.</summary>
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

@@ -7,6 +7,14 @@ The query module regularly searches the FHIR server for
 These are resources, that reference a `Group` via `enrollment` which in turn references `Library` resources with the
 actual SQL that represent the eligibility criteria of the study.
 
+```mermaid
+flowchart LR
+    query["query module"] -.->|polls| study["ResearchStudy<br/>recruit-research-study"]
+    study -->|enrollment| group["Group<br/>eligibility criteria"]
+    group -->|"characteristic[0].valueReference"| lib0["Library<br/>SQLQuery"]
+    group -->|"characteristic[1].valueReference"| lib1["Library<br/>SQLQuery"]
+```
+
 So, to create your own resource, all you have to do is define
 a compliant `ResearchStudy` resource and send it to the FHIR server that is polled by the `query` module.
 
@@ -31,3 +39,5 @@ Finally, go back to `Recruitment` → `Trials`, click on your newly-created stud
 ![The screening list of the new study with three recommended candidate patients](../_img/screenshots/trial-editor/my-first-study-screening-list-dark.png#only-dark)
 
 Congratulations, you've just created your first cohort definition and displayed potentially eligible patients in the screening list.
+
+To write criteria of your own, continue with [Authoring eligibility criteria](authoring-eligibility-criteria.md).

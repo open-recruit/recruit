@@ -40,4 +40,8 @@
   <ItemGroup>
     <EmbeddedResource Include="Services\Notify\Templates\*.liquid" />
   </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="RecruIT.List.Tests" />
+  </ItemGroup>
 </Project>
