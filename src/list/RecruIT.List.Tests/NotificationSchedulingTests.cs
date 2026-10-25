@@ -216,6 +216,50 @@ public sealed class NotificationSchedulingTests
         Assert.NotEqual(berlin.UtcDateTime, tokyo.UtcDateTime);
     }
 
+    [Fact]
+    public void Daily_InFallBackOverlapAfterTheEarlierPass_SchedulesTheLaterPassTheSameDay()
+    {
+        // 2026-10-25 Berlin falls back from 03:00 CEST to 02:00 CET, so 02:30 occurs twice. An
+        // event at 02:40 CEST (00:40 UTC) is past the first 02:30, but not the second - the one
+        // ambiguous slots resolve to, and the one an event at 02:10 CET is scheduled for.
+        var timeOfDay = new TimeOnly(2, 30);
+
+        var afterTheEarlierPass = NotificationScheduling.ComputeEmailScheduledFor(
+            NotificationFrequency.Daily,
+            null,
+            timeOfDay,
+            Berlin,
+            new DateTimeOffset(2026, 10, 25, 0, 40, 0, TimeSpan.Zero)
+        );
+        var beforeTheLaterPass = NotificationScheduling.ComputeEmailScheduledFor(
+            NotificationFrequency.Daily,
+            null,
+            timeOfDay,
+            Berlin,
+            new DateTimeOffset(2026, 10, 25, 1, 10, 0, TimeSpan.Zero)
+        );
+
+        var laterPass = new DateTimeOffset(2026, 10, 25, 1, 30, 0, TimeSpan.Zero);
+        Assert.Equal(laterPass, afterTheEarlierPass);
+        Assert.Equal(laterPass, beforeTheLaterPass);
+    }
+
+    [Fact]
+    public void Daily_InGapThatTimeZoneInfoDoesNotReportAsInvalid_SchedulesTheGapsEnd()
+    {
+        // America/Ojinaga sprang forward from 02:00 MST to 03:00 MDT (09:00 UTC) on 2014-03-09,
+        // which .NET models as a base offset change, so TimeZoneInfo.IsInvalidTime misses it.
+        var result = NotificationScheduling.ComputeEmailScheduledFor(
+            NotificationFrequency.Daily,
+            null,
+            new TimeOnly(2, 8),
+            "America/Ojinaga",
+            new DateTimeOffset(2014, 3, 9, 8, 53, 41, TimeSpan.Zero)
+        );
+
+        Assert.Equal(new DateTimeOffset(2014, 3, 9, 9, 0, 0, TimeSpan.Zero), result);
+    }
+
     private static void AssertLocal(
         DateTimeOffset actual,
         string timeZoneId,
