@@ -1,5 +1,57 @@
 # Changelog
 
+## [11.0.0](https://github.com/open-recruit/recruit/compare/v10.5.7...v11.0.0) (2026-10-25)
+
+
+### ⚠ BREAKING CHANGES
+
+* next-generation list module and only support SQL-on-FHIR query module ([#642](https://github.com/open-recruit/recruit/issues/642))
+
+### Features
+
+* edit screening notes, consistent patient name, ctrl+enter to save ([#672](https://github.com/open-recruit/recruit/issues/672)) ([f33ea59](https://github.com/open-recruit/recruit/commit/f33ea59de2c3164f529c15e73ca7ee406a5eff0d))
+* improved notifications UI ([#658](https://github.com/open-recruit/recruit/issues/658)) ([8034175](https://github.com/open-recruit/recruit/commit/803417522c99c6912e95523d559abf41eab3f078))
+* next-generation list module and only support SQL-on-FHIR query module ([#642](https://github.com/open-recruit/recruit/issues/642)) ([cc186fa](https://github.com/open-recruit/recruit/commit/cc186faf5eff1c6a9fa09ff505cbe7106f1c2ea3))
+* pushgateway support for query module ([#661](https://github.com/open-recruit/recruit/issues/661)) ([9cb6da1](https://github.com/open-recruit/recruit/commit/9cb6da1386dd66900733f3659d5d4e9af2dff1cd))
+* support for DuckDB as a query engine - used to simplify the demo chart deployment ([#656](https://github.com/open-recruit/recruit/issues/656)) ([a07eed5](https://github.com/open-recruit/recruit/commit/a07eed59b01c795d3ea97b184941a8d8542b030d))
+* **ui:** new suggestions indicator and notification tester ([#660](https://github.com/open-recruit/recruit/issues/660)) ([a08670a](https://github.com/open-recruit/recruit/commit/a08670aa4ac3a1e6c79ed24f94753099fabac681))
+* **ui:** show sql dialect in Library card ([#671](https://github.com/open-recruit/recruit/issues/671)) ([83adec3](https://github.com/open-recruit/recruit/commit/83adec37caa0179eaa8c3e6678f41998e31a9598))
+
+
+### Bug Fixes
+
+* added fuzz testing and fixed timezone errors in scheduling config ([#673](https://github.com/open-recruit/recruit/issues/673)) ([8634372](https://github.com/open-recruit/recruit/commit/86343720b5f4cc0b527d0ef31ad8a6531997ebf9))
+* **deps:** update all non-major dependencies ([#646](https://github.com/open-recruit/recruit/issues/646)) ([51aa202](https://github.com/open-recruit/recruit/commit/51aa202b87d10bf741b0e5e5299e62126d304c66))
+* **deps:** update all non-major dependencies ([#666](https://github.com/open-recruit/recruit/issues/666)) ([2fe3065](https://github.com/open-recruit/recruit/commit/2fe306561307ebe73daaa5264e03933758e26cd3))
+* **deps:** update all non-major dependencies ([#675](https://github.com/open-recruit/recruit/issues/675)) ([1002ecd](https://github.com/open-recruit/recruit/commit/1002ecd9ccfb4db922df4063c98c17d8ca2d0207))
+* **deps:** update dependency checkstyle to v14 ([#663](https://github.com/open-recruit/recruit/issues/663)) ([78ff7ec](https://github.com/open-recruit/recruit/commit/78ff7ec593fa861ee49799406ab1f773c49000b3))
+* **deps:** update dependency io.trino:trino-jdbc to v483 ([#668](https://github.com/open-recruit/recruit/issues/668)) ([eaa517e](https://github.com/open-recruit/recruit/commit/eaa517efd2541fd9c408c1c14231343255abf557))
+* **deps:** update dependency io.trino:trino-jdbc to v484 ([#676](https://github.com/open-recruit/recruit/issues/676)) ([5d985b7](https://github.com/open-recruit/recruit/commit/5d985b7f10ae9650097b53cc008a4eba3774d226))
+* **deps:** update dependency org.duckdb:duckdb_jdbc to v2 ([#669](https://github.com/open-recruit/recruit/issues/669)) ([6f1d54f](https://github.com/open-recruit/recruit/commit/6f1d54f25de2125eabd780ef724e8941b86bdfd4))
+* migrate to blazor v4 and minor ui fixes ([#657](https://github.com/open-recruit/recruit/issues/657)) ([37c1e6f](https://github.com/open-recruit/recruit/commit/37c1e6f523c319d7108fc4941f214a3325455e75))
+
+
+### Documentation
+
+* build ig and pages concurrently ([#652](https://github.com/open-recruit/recruit/issues/652)) ([bcce849](https://github.com/open-recruit/recruit/commit/bcce849b86a0b795f402c8b11ff8174fb23204e7))
+
+
+### Miscellaneous Chores
+
+* cache and yaml rewrite fix ([#654](https://github.com/open-recruit/recruit/issues/654)) ([5dcb4c7](https://github.com/open-recruit/recruit/commit/5dcb4c7715b53580e18b5d93d5a6234a4438603d))
+* **deps:** update all digest updates ([#664](https://github.com/open-recruit/recruit/issues/664)) ([5193d8f](https://github.com/open-recruit/recruit/commit/5193d8f8e13690183a0d9683d7fb2029b9e7ac06))
+* **deps:** update dependency microsoft.net.test.sdk to v18 ([#662](https://github.com/open-recruit/recruit/issues/662)) ([09b0514](https://github.com/open-recruit/recruit/commit/09b0514375532908ee480090014070b6439dcb2b))
+* **deps:** update docker.io/trinodb/trino docker tag to v484 ([#667](https://github.com/open-recruit/recruit/issues/667)) ([39ac6b1](https://github.com/open-recruit/recruit/commit/39ac6b12751c75c0fe1684516e6197a76c9ea60d))
+* **deps:** update github-actions ([#665](https://github.com/open-recruit/recruit/issues/665)) ([fc32a83](https://github.com/open-recruit/recruit/commit/fc32a831ef3c0c19d1897b106c3c3e6595cfefa4))
+* **deps:** update github-actions ([#670](https://github.com/open-recruit/recruit/issues/670)) ([6fee45e](https://github.com/open-recruit/recruit/commit/6fee45ec53242424493d9b02c8b1a8e27e483f67))
+* fsh refactor to comply to mii resources and removal of older miracum urls ([#659](https://github.com/open-recruit/recruit/issues/659)) ([b1c6978](https://github.com/open-recruit/recruit/commit/b1c69783903c3e0a0c89bf1e18bbe9fd30764998))
+
+
+### CI/CD
+
+* fix chart tags on non-PR pushes ([4f06807](https://github.com/open-recruit/recruit/commit/4f0680789d8827fade032c3ac84f5154e235b3c3))
+* reset chart changelog annotations ([#653](https://github.com/open-recruit/recruit/issues/653)) ([5a61873](https://github.com/open-recruit/recruit/commit/5a618737f7e0d98ef20cee04b32ee2d35f396c24))
+
 ## [10.5.7](https://github.com/miracum/recruit/compare/v10.5.6...v10.5.7) (2026-08-03)
 
 
