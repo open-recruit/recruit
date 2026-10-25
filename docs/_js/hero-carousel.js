@@ -22,7 +22,7 @@
 
     function show(index) {
       current = (index + slides.length) % slides.length;
-      slides.forEach((slide, i) => slide.classList.toggle("is-active", i === current));
+      slides.forEach((slide, i) => slide.toggleAttribute("data-active", i === current));
       dots.forEach((dot, i) => dot.setAttribute("aria-current", String(i === current)));
     }
 

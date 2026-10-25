@@ -59,7 +59,8 @@ is the page's Markdown content. -#} {% extends "main.html" %} {% block hero %}
       <div class="rc-carousel__slides">
         {%- for slide in slides %}
         <figure
-          class="rc-carousel__slide{% if loop.first %} is-active{% endif %}"
+          class="rc-carousel__slide"
+          {% if loop.first %}data-active{% endif %}
           role="group"
           aria-roledescription="slide"
           aria-label="{{ loop.index }} of {{ loop.length }}"

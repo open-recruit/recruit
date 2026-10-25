@@ -166,7 +166,7 @@ body:not([data-md-color-scheme="slate"]) img.rc-hero__img--dark,
     visibility 0.6s;
 }
 
-.rc-carousel__slide.is-active {
+.rc-carousel__slide[data-active] {
   opacity: 1;
   visibility: visible;
 }
