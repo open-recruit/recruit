@@ -207,7 +207,7 @@ public sealed class PatientRecordService(
             FhirConstants.SnomedCodeYes => (true, false),
             FhirConstants.SnomedCodeNo => (false, false),
             FhirConstants.SnomedCodeIndeterminate => ((bool?)null, true),
-            _ => ((bool?)null, false),
+            _ => (null, false),
         };
 
         return new CriterionStatusDto

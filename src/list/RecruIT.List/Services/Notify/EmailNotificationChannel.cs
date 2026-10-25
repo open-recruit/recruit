@@ -62,7 +62,7 @@ public sealed class EmailNotificationChannel(IOptions<EmailNotificationOptions> 
             CancellationToken ct = default
         )
         {
-            var message = new MimeMessage();
+            using var message = new MimeMessage();
             message.From.Add(MailboxAddress.Parse(from));
             message.To.Add(MailboxAddress.Parse(recipient));
             message.Subject = subject;

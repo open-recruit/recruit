@@ -214,7 +214,12 @@ public sealed class ScreeningListService(
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Failed to fetch List/{ListId} from the FHIR server", listId);
+            // listId comes straight from the route - strip line breaks so it can't forge log entries.
+            logger.LogError(
+                ex,
+                "Failed to fetch List/{ListId} from the FHIR server",
+                listId.ReplaceLineEndings(string.Empty)
+            );
             throw new FhirAccessException(localizer["App.Errors.PatientListLoadFailed"], ex);
         }
 

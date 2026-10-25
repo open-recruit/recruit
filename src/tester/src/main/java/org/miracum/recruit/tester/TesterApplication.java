@@ -221,14 +221,16 @@ public class TesterApplication implements ApplicationRunner {
             maxAttempts);
       }
 
-      if (attempt == maxAttempts) {
-        throw new IllegalStateException("Failed to wait for the FHIR server to be up.");
+      if (attempt < maxAttempts) {
+        Thread.sleep(backoff);
+        backoff =
+            backoff.multipliedBy(2).compareTo(maxBackoff) > 0
+                ? maxBackoff
+                : backoff.multipliedBy(2);
       }
-
-      Thread.sleep(backoff);
-      backoff =
-          backoff.multipliedBy(2).compareTo(maxBackoff) > 0 ? maxBackoff : backoff.multipliedBy(2);
     }
+
+    throw new IllegalStateException("Failed to wait for the FHIR server to be up.");
   }
 
   private void assertResourceCountWithRetry(String resourceType, int expectedCount)
