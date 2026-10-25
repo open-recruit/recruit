@@ -100,9 +100,10 @@ spec:
             - name: QUERY_SQL_ON_FHIR_SQL_DIALECT
               value: {{ .sqlDialect | quote }}
             {{- if eq .sqlDialect "duckdb" }}
-            # every connection is its own, empty in-memory database, set up by the init SQL
+            # every connection is its own, empty in-memory database, set up by the init SQL. DuckDB spills
+            # to `.tmp` in the working directory by default, which is on the read-only root filesystem.
             - name: SPRING_DATASOURCE_URL
-              value: "jdbc:duckdb:"
+              value: "jdbc:duckdb:;temp_directory=/tmp/duckdb"
             - name: SPRING_DATASOURCE_DRIVERCLASSNAME
               value: org.duckdb.DuckDBDriver
             {{- with .duckdb.initSql }}
