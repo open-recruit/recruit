@@ -94,7 +94,7 @@ either Compose or Helm.
       --version 11.0.0 \
       --wait \
       --timeout 30m \
-      -f https://raw.githubusercontent.com/open-recruit/recruit/11.0.0/charts/recruit/values-demo.yaml \
+      -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.0/charts/recruit/values-demo.yaml \
       recruit-demo \
       oci://ghcr.io/open-recruit/recruit/charts/recruit
     ```

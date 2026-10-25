@@ -84,6 +84,14 @@ public sealed class EmailNotificationOptions
     /// </summary>
     public string PublicUrl(string relativePath)
     {
+        // `required` isn't enforced by the configuration binder, so this is null when unset
+        if (string.IsNullOrEmpty(PublicBaseUrl))
+        {
+            throw new InvalidOperationException(
+                "Notifications:Email:PublicBaseUrl must be configured to send notification emails."
+            );
+        }
+
         var baseUri = new Uri(
             PublicBaseUrl.EndsWith('/') ? PublicBaseUrl : PublicBaseUrl + "/",
             UriKind.Absolute

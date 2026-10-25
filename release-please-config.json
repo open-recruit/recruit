@@ -57,6 +57,12 @@
         },
         {
           "type": "chore",
+          "scope": "release",
+          "section": "Miscellaneous Chores",
+          "hidden": true
+        },
+        {
+          "type": "chore",
           "section": "Miscellaneous Chores",
           "hidden": false
         },
