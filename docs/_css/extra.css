@@ -25,7 +25,7 @@
 
 /*
   overrides/partials/logo.html renders both variants of the mark and overrides/home.html both variants
-  of the hero screenshot, hide the one not matching the scheme.
+  of each hero screenshot, hide the one not matching the scheme.
   !important, as the theme sets the logo's display with more specific selectors in the header and drawer.
 */
 body:not([data-md-color-scheme="slate"]) img.rc-logo--dark,
@@ -146,6 +146,82 @@ body:not([data-md-color-scheme="slate"]) img.rc-hero__img--dark,
   object-position: top left;
   border-radius: 0.5rem;
   box-shadow: 0 1rem 2.5rem rgb(0 0 0 / 35%);
+}
+
+/*
+  Hero carousel: all slides share one grid cell, so the hero keeps the height of the tallest slide
+  and only the active one is faded in. visibility also hides the inactive slides from screen readers.
+*/
+.rc-carousel__slides {
+  display: grid;
+}
+
+.rc-carousel__slide {
+  grid-area: 1 / 1;
+  margin: 0;
+  opacity: 0;
+  visibility: hidden;
+  transition:
+    opacity 0.6s ease,
+    visibility 0.6s;
+}
+
+.rc-carousel__slide[data-active] {
+  opacity: 1;
+  visibility: visible;
+}
+
+.rc-carousel__slide figcaption {
+  margin-top: 1rem;
+  font-size: 0.75rem;
+  line-height: 1.5;
+  text-align: center;
+  opacity: 0.85;
+}
+
+.rc-carousel__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  margin-top: 0.8rem;
+}
+
+.rc-carousel__dots[hidden] {
+  display: none;
+}
+
+.rc-carousel__dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0.25rem;
+  background-color: rgb(255 255 255 / 40%);
+  cursor: pointer;
+  transition:
+    width 0.3s ease,
+    background-color 0.3s ease;
+}
+
+.rc-carousel__dot:hover {
+  background-color: rgb(255 255 255 / 70%);
+}
+
+.rc-carousel__dot:focus-visible {
+  outline: 0.1rem solid #fff;
+  outline-offset: 0.15rem;
+}
+
+.rc-carousel__dot[aria-current="true"] {
+  width: 1.4rem;
+  background-color: #f07a4a;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rc-carousel__slide,
+  .rc-carousel__dot {
+    transition: none;
+  }
 }
 
 /*

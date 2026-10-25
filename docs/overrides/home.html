@@ -31,18 +31,69 @@ is the page's Markdown content. -#} {% extends "main.html" %} {% block hero %}
         </a>
       </div>
     </div>
-    <figure class="rc-hero__visual">
-      <img
-        class="rc-hero__img--light"
-        src="{{ '_img/screenshots/screeninglist-list-view-light.png' | url }}"
-        alt="A recruIT screening list showing candidate patients with their recruitment status"
-      />
-      <img
-        class="rc-hero__img--dark"
-        src="{{ '_img/screenshots/screeninglist-list-view-dark.png' | url }}"
-        alt="A recruIT screening list showing candidate patients with their recruitment status"
-      />
-    </figure>
+    {#- slides are stacked and cross-faded by _css/extra.css, _js/hero-carousel.js
+    advances them and reveals the dots. Without the script the first slide stays. -#}
+    {%- set slides = [
+      {
+        "img": "_img/screenshots/hero/screening-list",
+        "alt": "A recruIT screening list showing candidate patients with their recruitment status",
+        "caption": "The screening list shows every candidate patient and tracks their recruitment status.",
+      },
+      {
+        "img": "_img/screenshots/hero/attrition-funnel",
+        "alt": "The eligibility criteria of a trial with an attrition funnel showing how many patients remain after each criterion",
+        "caption": "The attrition funnel shows how many patients each eligibility criterion rules out.",
+      },
+      {
+        "img": "_img/screenshots/notifications/notification-list",
+        "alt": "The notification list with unread notifications about newly recommended patients, grouped by trial",
+        "caption": "Notifications tell the team as soon as new candidates turn up.",
+      },
+    ] %}
+    <div
+      class="rc-hero__visual rc-carousel"
+      role="region"
+      aria-roledescription="carousel"
+      aria-label="{{ config.site_name }} screenshots"
+    >
+      <div class="rc-carousel__slides">
+        {%- for slide in slides %}
+        <figure
+          class="rc-carousel__slide"
+          {% if loop.first %}data-active{% endif %}
+          role="group"
+          aria-roledescription="slide"
+          aria-label="{{ loop.index }} of {{ loop.length }}"
+        >
+          <img
+            class="rc-hero__img--light"
+            src="{{ (slide.img ~ '-light.png') | url }}"
+            alt="{{ slide.alt }}"
+            width="2880"
+            height="1530"
+          />
+          <img
+            class="rc-hero__img--dark"
+            src="{{ (slide.img ~ '-dark.png') | url }}"
+            alt="{{ slide.alt }}"
+            width="2880"
+            height="1530"
+          />
+          <figcaption>{{ slide.caption }}</figcaption>
+        </figure>
+        {%- endfor %}
+      </div>
+      <div class="rc-carousel__dots" hidden>
+        {%- for slide in slides %}
+        <button
+          type="button"
+          class="rc-carousel__dot"
+          aria-label="Show screenshot {{ loop.index }}"
+          aria-current="{{ 'true' if loop.first else 'false' }}"
+        ></button>
+        {%- endfor %}
+      </div>
+    </div>
   </div>
 </section>
 {% endblock %} {#- skip the default title and edit button: the hero already
