@@ -493,7 +493,7 @@ public sealed class EligibilityCriteriaService(
             );
         }
 
-        var study = (ResearchStudy)existingStudy.DeepCopy();
+        var study = existingStudy.DeepCopy();
         study.Enrollment = [groupReference];
 
         var entry = new Bundle.EntryComponent

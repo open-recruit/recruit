@@ -459,6 +459,27 @@
   <data name="App.PatientNotes.AddButton" xml:space="preserve">
     <value>Notiz hinzufügen</value>
   </data>
+  <data name="App.PatientNotes.SaveShortcutHint" xml:space="preserve">
+    <value>Strg+Enter zum Speichern</value>
+  </data>
+  <data name="App.PatientNotes.EditButton" xml:space="preserve">
+    <value>Notiz bearbeiten</value>
+  </data>
+  <data name="App.PatientNotes.SaveEditButton" xml:space="preserve">
+    <value>Speichern</value>
+  </data>
+  <data name="App.PatientNotes.CancelEditButton" xml:space="preserve">
+    <value>Abbrechen</value>
+  </data>
+  <data name="App.PatientNotes.Edited" xml:space="preserve">
+    <value>bearbeitet {0}</value>
+  </data>
+  <data name="App.PatientNotes.ShowPreviousVersions" xml:space="preserve">
+    <value>{0} frühere Version(en) anzeigen</value>
+  </data>
+  <data name="App.PatientNotes.HidePreviousVersions" xml:space="preserve">
+    <value>Frühere Versionen ausblenden</value>
+  </data>
   <data name="App.PatientHistory.Empty" xml:space="preserve">
     <value>Noch kein Verlauf.</value>
   </data>
@@ -470,6 +491,12 @@
   </data>
   <data name="App.Timeline.NoteAddedBy" xml:space="preserve">
     <value>Notiz hinzugefügt von {0}</value>
+  </data>
+  <data name="App.Timeline.NoteEdited" xml:space="preserve">
+    <value>Notiz bearbeitet</value>
+  </data>
+  <data name="App.Timeline.NoteEditedBy" xml:space="preserve">
+    <value>Notiz bearbeitet von {0}</value>
   </data>
   <data name="App.Toast.StatusUpdated" xml:space="preserve">
     <value>Status geändert zu „{0}“.</value>
@@ -536,6 +563,9 @@
   </data>
   <data name="App.Errors.NotAuthorizedUpdatePatient" xml:space="preserve">
     <value>Sie sind nicht berechtigt, Patienten dieser Studie zu aktualisieren.</value>
+  </data>
+  <data name="App.Errors.NotAuthorizedEditNote" xml:space="preserve">
+    <value>Nur die Verfasserin oder der Verfasser einer Notiz kann sie bearbeiten.</value>
   </data>
   <data name="App.Errors.NotAuthorizedManageAccess" xml:space="preserve">
     <value>Sie sind nicht berechtigt, den Zugriff auf diese Studie zu verwalten.</value>

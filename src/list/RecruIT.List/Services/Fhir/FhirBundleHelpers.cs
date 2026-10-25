@@ -95,6 +95,35 @@ internal static class FhirBundleHelpers
     public static string? GetMedicalRecordNumber(this Patient patient) =>
         patient.Identifier.FirstOrDefault(IsMedicalRecordNumber)?.Value;
 
+    /// <summary>
+    /// How a patient is labelled everywhere in the UI and in notifications: Patient.name, else the
+    /// MR (medical record number) identifier, else the first identifier, else the logical id.
+    /// Takes the id separately since the Patient itself may be missing from a search bundle.
+    /// </summary>
+    public static string GetPatientDisplayName(Patient? patient, string patientId) =>
+        FormatHumanName(patient?.Name?.FirstOrDefault())
+        ?? patient?.GetMedicalRecordNumber()
+        ?? patient?.Identifier.FirstOrDefault(i => !string.IsNullOrWhiteSpace(i.Value))?.Value
+        ?? patientId;
+
+    private static string? FormatHumanName(HumanName? name)
+    {
+        if (name is null)
+        {
+            return null;
+        }
+
+        var formatted = string.Join(
+            ' ',
+            new[] { string.Join(' ', name.Given ?? []), name.Family }.Where(s =>
+                !string.IsNullOrWhiteSpace(s)
+            )
+        );
+        return formatted.Length > 0 ? formatted
+            : string.IsNullOrWhiteSpace(name.Text) ? null
+            : name.Text;
+    }
+
     private static bool IsMedicalRecordNumber(Identifier identifier) =>
         identifier.Type?.Coding.Any(c =>
             c.System == FhirConstants.SystemIdentifierType

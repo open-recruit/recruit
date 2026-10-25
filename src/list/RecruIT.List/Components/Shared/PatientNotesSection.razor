@@ -6,7 +6,8 @@
 <div>
     <span class="bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground">@Localizer["App.Patient.Notes"]</span>
 
-    <div class="bb:mt-2 bb:max-h-48 bb:space-y-2 bb:overflow-y-auto">
+    @* The scroll cap is lifted while editing, or the inline editor would be squeezed into it. *@
+    <div class="bb:mt-2 bb:space-y-2 @(_editingNoteId is null ? "bb:max-h-48 bb:overflow-y-auto" : string.Empty)">
         @if (_loading)
         {
             <BbSkeleton Class="bb:h-14 bb:w-full" />
@@ -20,14 +21,70 @@
             @foreach (var note in _notes)
             {
                 <div class="bb:rounded bb:border bb:bg-muted/40 bb:p-3">
-                    <p class="bb:text-xs bb:text-muted-foreground">
-                        @(note.Time?.LocalDateTime.ToString("g") ?? Localizer["App.PatientNotes.UnknownTime"])
-                        @if (!string.IsNullOrEmpty(note.Author))
+                    <div class="bb:flex bb:items-start bb:justify-between bb:gap-2">
+                        <p class="bb:text-xs bb:text-muted-foreground">
+                            @(note.Time?.LocalDateTime.ToString("g") ?? Localizer["App.PatientNotes.UnknownTime"])
+                            @if (!string.IsNullOrEmpty(note.Author))
+                            {
+                                <span> &middot; @note.Author</span>
+                            }
+                            @if (note.EditedAt is { } editedAt)
+                            {
+                                <span> &middot; @Localizer["App.PatientNotes.Edited", editedAt.LocalDateTime.ToString("g")]</span>
+                            }
+                        </p>
+                        @if (CanEditNote(note) && _editingNoteId is null)
                         {
-                            <span> &middot; @note.Author</span>
+                            <BbButton Variant="ButtonVariant.Ghost" Size="ButtonSize.Icon" Class="bb:-my-2 bb:-me-2"
+                                      AriaLabel="@Localizer["App.PatientNotes.EditButton"]" OnClick="() => StartEditing(note)">
+                                <LucideIcon Name="pencil" Size="14" />
+                            </BbButton>
                         }
-                    </p>
-                    <div class="bb:max-w-none bb:text-sm bb:[&_p]:mb-2 bb:[&_ul]:list-disc bb:[&_ul]:ms-4 bb:[&_ol]:list-decimal bb:[&_ol]:ms-4 bb:[&_li]:mb-1 bb:[&_strong]:font-bold bb:[&_em]:italic">@RenderNote(note.Text)</div>
+                    </div>
+
+                    @if (_editingNoteId == note.Id)
+                    {
+                        <div @onkeydown="OnEditNoteKeyDownAsync">
+                            <BbRichTextEditor @ref="_editNoteEditor" @bind-Value="_editDraftHtml" Class="bb:mt-2" MinHeight="120px" />
+                        </div>
+                        <div class="bb:mt-2 bb:flex bb:items-center bb:justify-end bb:gap-3">
+                            <span class="bb:text-xs bb:text-muted-foreground">@Localizer["App.PatientNotes.SaveShortcutHint"]</span>
+                            <BbButton Variant="ButtonVariant.Outline" Disabled="_saving" OnClick="CancelEditing">
+                                @Localizer["App.PatientNotes.CancelEditButton"]
+                            </BbButton>
+                            <BbButton Variant="ButtonVariant.Default" Disabled="@(IsEffectivelyEmpty(_editDraftHtml) || _saving)"
+                                      Loading="_saving" OnClick="SaveEditAsync">
+                                @Localizer["App.PatientNotes.SaveEditButton"]
+                            </BbButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <div class="@NoteBodyClass">@RenderNote(note.Text)</div>
+                    }
+
+                    @if (note.PreviousVersions.Count > 0)
+                    {
+                        var expanded = _expandedHistory.Contains(note.Id);
+                        <button type="button" class="bb:mt-1 bb:text-xs bb:text-muted-foreground bb:underline bb:underline-offset-2 bb:hover:text-foreground"
+                                aria-expanded="@(expanded ? "true" : "false")" @onclick="() => ToggleHistory(note.Id)">
+                            @(expanded
+                                ? Localizer["App.PatientNotes.HidePreviousVersions"]
+                                : Localizer["App.PatientNotes.ShowPreviousVersions", note.PreviousVersions.Count])
+                        </button>
+                        @if (expanded)
+                        {
+                            <div class="bb:mt-2 bb:space-y-2 bb:border-s-2 bb:ps-3">
+                                @foreach (var version in note.PreviousVersions.Reverse())
+                                {
+                                    <div>
+                                        <p class="bb:text-xs bb:text-muted-foreground">@version.WrittenAt.LocalDateTime.ToString("g")</p>
+                                        <div class="@NoteBodyClass bb:text-muted-foreground">@RenderNote(version.Text)</div>
+                                    </div>
+                                }
+                            </div>
+                        }
+                    }
                 </div>
             }
         }
@@ -35,9 +92,12 @@
 
     @if (CanEdit && Patient.ResearchSubjectIdentifier is not null)
     {
-        <BbRichTextEditor @bind-Value="_noteDraftHtml" Placeholder="@Localizer["App.PatientNotes.Placeholder"]" Class="bb:mt-3" MinHeight="120px" />
+        <div @onkeydown="OnNewNoteKeyDownAsync">
+            <BbRichTextEditor @ref="_newNoteEditor" @bind-Value="_noteDraftHtml" Placeholder="@Localizer["App.PatientNotes.Placeholder"]" Class="bb:mt-3" MinHeight="120px" />
+        </div>
         <div class="bb:mt-2 bb:flex bb:items-center bb:justify-end bb:gap-3">
             <SaveStatusIndicator Saving="_saving" />
+            <span class="bb:text-xs bb:text-muted-foreground">@Localizer["App.PatientNotes.SaveShortcutHint"]</span>
             <BbButton Variant="ButtonVariant.Default" Disabled="@(IsNoteDraftEmpty || _saving)"
                       Loading="_saving" OnClick="SaveNoteAsync">
                 @Localizer["App.PatientNotes.AddButton"]
@@ -61,12 +121,20 @@
 
     private static readonly Regex HtmlTagRegex = new("<[^>]+>", RegexOptions.Compiled);
 
+    private const string NoteBodyClass =
+        "bb:max-w-none bb:text-sm bb:[&_p]:mb-2 bb:[&_ul]:list-disc bb:[&_ul]:ms-4 bb:[&_ol]:list-decimal bb:[&_ol]:ms-4 bb:[&_li]:mb-1 bb:[&_strong]:font-bold bb:[&_em]:italic";
+
     private List<ScreeningNoteDto> _notes = [];
     private bool _loading;
     private string _noteDraftHtml = string.Empty;
     private string? _loadedForSubjectId;
     private ClaimsPrincipal _user = new();
     private bool _saving;
+    private BbRichTextEditor? _newNoteEditor;
+    private BbRichTextEditor? _editNoteEditor;
+    private Guid? _editingNoteId;
+    private string _editDraftHtml = string.Empty;
+    private readonly HashSet<Guid> _expandedHistory = [];
 
     /// <summary>Quill emits markup like "&lt;p&gt;&lt;br&gt;&lt;/p&gt;" for an empty editor, so a plain string check isn't enough.</summary>
     private bool IsNoteDraftEmpty => IsEffectivelyEmpty(_noteDraftHtml);
@@ -81,6 +149,14 @@
     /// </summary>
     private static MarkupString RenderNote(string html) => new(NoteHtmlSanitizer.Sanitize(html));
 
+    /// <summary>ScreeningNoteService.UpdateNoteAsync enforces this too - this only decides whether to offer the button.</summary>
+    private bool CanEditNote(ScreeningNoteDto note) =>
+        CanEdit && note.AuthorSubjectId is not null && note.AuthorSubjectId == _user.GetSubjectId();
+
+    /// <summary>Ctrl+Enter, or Cmd+Enter on macOS.</summary>
+    private static bool IsSaveShortcut(KeyboardEventArgs e) =>
+        e.Key == "Enter" && (e.CtrlKey || e.MetaKey) && !e.Repeat;
+
     protected override async Task OnParametersSetAsync()
     {
         _user = await AuthStateTask.GetUserAsync();
@@ -89,6 +165,8 @@
         {
             _loadedForSubjectId = Patient.ResearchSubjectId;
             _noteDraftHtml = string.Empty;
+            _editingNoteId = null;
+            _expandedHistory.Clear();
             await LoadNotesAsync();
         }
     }
@@ -117,9 +195,94 @@
         }
     }
 
+    /// <summary>
+    /// The editor reports changes debounced by 150ms, so the bound draft can lag behind what was
+    /// just typed - read the editor's HTML directly before saving.
+    /// </summary>
+    private async Task OnNewNoteKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (!IsSaveShortcut(e) || _saving || _newNoteEditor is null)
+        {
+            return;
+        }
+
+        _noteDraftHtml = await _newNoteEditor.GetHtmlAsync();
+        await SaveNoteAsync();
+    }
+
+    private async Task OnEditNoteKeyDownAsync(KeyboardEventArgs e)
+    {
+        if (e.Key == "Escape" && !_saving)
+        {
+            CancelEditing();
+            return;
+        }
+
+        if (!IsSaveShortcut(e) || _saving || _editNoteEditor is null)
+        {
+            return;
+        }
+
+        _editDraftHtml = await _editNoteEditor.GetHtmlAsync();
+        await SaveEditAsync();
+    }
+
+    private void StartEditing(ScreeningNoteDto note)
+    {
+        _editingNoteId = note.Id;
+        _editDraftHtml = note.Text;
+    }
+
+    private void CancelEditing()
+    {
+        _editingNoteId = null;
+        _editDraftHtml = string.Empty;
+    }
+
+    private void ToggleHistory(Guid noteId)
+    {
+        if (!_expandedHistory.Remove(noteId))
+        {
+            _expandedHistory.Add(noteId);
+        }
+    }
+
+    private async Task SaveEditAsync()
+    {
+        if (_editingNoteId is not { } noteId || _saving)
+        {
+            return;
+        }
+
+        var sanitizedHtml = NoteHtmlSanitizer.Sanitize(_editDraftHtml);
+        if (IsEffectivelyEmpty(sanitizedHtml))
+        {
+            return;
+        }
+
+        _saving = true;
+        StateHasChanged();
+
+        try
+        {
+            await ScreeningNoteService.UpdateNoteAsync(noteId, sanitizedHtml, TrialIdentifier, _user);
+            Toast.Success(Localizer["App.Toast.NoteSaved"], Localizer["App.Common.Saved"]);
+            CancelEditing();
+            await LoadNotesAsync();
+        }
+        catch (Exception ex)
+        {
+            Toast.Error(ex.Message, Localizer["App.Toast.NoteSaveError"]);
+        }
+        finally
+        {
+            _saving = false;
+        }
+    }
+
     private async Task SaveNoteAsync()
     {
-        if (IsNoteDraftEmpty || Patient.ResearchSubjectIdentifier is not { } researchSubjectIdentifier)
+        if (IsNoteDraftEmpty || _saving || Patient.ResearchSubjectIdentifier is not { } researchSubjectIdentifier)
         {
             return;
         }

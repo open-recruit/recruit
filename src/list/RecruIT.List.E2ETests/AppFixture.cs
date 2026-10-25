@@ -45,6 +45,12 @@ public sealed class AppFixture : IAsyncLifetime
 
     private const int FhirPort = 8080;
 
+    /// <summary>
+    /// The factory WithWebHostBuilder derived _factory from - disposing it disposes every factory
+    /// derived from it too, whereas disposing only the derived one would leave this one behind.
+    /// </summary>
+    private WebApplicationFactory<Program>? _rootFactory;
+
     private WebApplicationFactory<Program>? _factory;
     private PostgreSqlContainer? _postgres;
     private IContainer? _fhir;
@@ -101,7 +107,8 @@ public sealed class AppFixture : IAsyncLifetime
         MetricsUrl =
             $"http://127.0.0.1:{metricsPort.ToString(CultureInfo.InvariantCulture)}/metrics";
 
-        _factory = new WebApplicationFactory<Program>().WithWebHostBuilder(builder =>
+        _rootFactory = new WebApplicationFactory<Program>();
+        _factory = _rootFactory.WithWebHostBuilder(builder =>
         {
             builder.UseEnvironment("Development");
             // Program.cs configures Kestrel itself from these two settings (see its comment on
@@ -126,9 +133,9 @@ public sealed class AppFixture : IAsyncLifetime
 
     public async ValueTask DisposeAsync()
     {
-        if (_factory is not null)
+        if (_rootFactory is not null)
         {
-            await _factory.DisposeAsync();
+            await _rootFactory.DisposeAsync();
         }
 
         if (_postgres is not null)

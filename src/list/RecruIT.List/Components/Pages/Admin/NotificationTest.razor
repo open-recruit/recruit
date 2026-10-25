@@ -250,10 +250,7 @@ else
         (_trials ?? []).Select(t => new SelectOption<string>(t.ListId, t.StudyAcronym));
 
     private IEnumerable<SelectOption<string>> PatientOptions =>
-        (_patients ?? []).Select(p => new SelectOption<string>(p.ResearchSubjectId, PatientDisplayName(p)));
-
-    private static string PatientDisplayName(PatientListEntryDto patient) =>
-        patient.Name ?? patient.MedicalRecordNumber ?? patient.PatientId;
+        (_patients ?? []).Select(p => new SelectOption<string>(p.ResearchSubjectId, p.DisplayName));
 
     protected override async Task OnInitializedAsync()
     {
@@ -319,7 +316,7 @@ else
         try
         {
             var count = await TestService.ReRecommendAsync(trial.ListId, _selectedSubjectId, _user);
-            _reRecommendResult = new ReRecommendResult(trial, patient is null ? _selectedSubjectId : PatientDisplayName(patient), count);
+            _reRecommendResult = new ReRecommendResult(trial, patient is null ? _selectedSubjectId : patient.DisplayName, count);
             await NotificationInboxState.RefreshAsync(_user);
         }
         catch (Exception ex)

@@ -197,18 +197,38 @@ public sealed class ResearchSubjectService(
             })
         );
 
+        // Each version of a note is its own entry: the first as "added", every later one as
+        // "edited", each showing the text as it read at that point.
         entries.AddRange(
             notesTask
                 .Result.Where(n => n.Time is not null)
-                .Select(n => new PatientHistoryEntryDto
-                {
-                    Time = n.Time!.Value,
-                    Title = string.IsNullOrEmpty(n.Author)
-                        ? localizer["App.Timeline.NoteAdded"]
-                        : localizer["App.Timeline.NoteAddedBy", n.Author],
-                    Description = n.Text,
-                    Kind = PatientHistoryEntryKind.Note,
-                })
+                .SelectMany(n =>
+                    n.PreviousVersions.Append(
+                            new ScreeningNoteRevisionDto(n.Text, n.EditedAt ?? n.Time!.Value)
+                        )
+                        .Select(
+                            (version, i) =>
+                                new PatientHistoryEntryDto
+                                {
+                                    Time = i == 0 ? n.Time!.Value : version.WrittenAt,
+                                    Title = (i == 0, string.IsNullOrEmpty(n.Author)) switch
+                                    {
+                                        (true, true) => localizer["App.Timeline.NoteAdded"],
+                                        (true, false) => localizer[
+                                            "App.Timeline.NoteAddedBy",
+                                            n.Author!
+                                        ],
+                                        (false, true) => localizer["App.Timeline.NoteEdited"],
+                                        (false, false) => localizer[
+                                            "App.Timeline.NoteEditedBy",
+                                            n.Author!
+                                        ],
+                                    },
+                                    Description = version.Text,
+                                    Kind = PatientHistoryEntryKind.Note,
+                                }
+                        )
+                )
         );
 
         return entries.OrderByDescending(e => e.Time).ToList();

@@ -345,7 +345,7 @@ public sealed class NotificationDetectorService(
             }
 
             var patient = await client.ReadAsync<Patient>($"Patient/{patientId}", ct: ct);
-            return ScreeningListService.FormatPatientName(patient) ?? patientId;
+            return FhirBundleHelpers.GetPatientDisplayName(patient, patientId);
         }
         catch (Exception)
         {

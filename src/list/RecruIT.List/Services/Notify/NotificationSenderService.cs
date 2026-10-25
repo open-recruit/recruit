@@ -274,8 +274,8 @@ public sealed class NotificationSenderService(
                 metrics.RecordEmailSend(Stopwatch.GetElapsedTime(sendStart), succeeded: false);
                 logger.LogError(
                     ex,
-                    "Failed to send notification email to {Email} for {Count} deliveries - will retry next tick",
-                    recipientEmail,
+                    "Failed to send notification email for subscription {SubscriptionId} ({Count} deliveries) - will retry next tick",
+                    group.Key,
                     deliveries.Count
                 );
 
@@ -288,9 +288,9 @@ public sealed class NotificationSenderService(
                 if (stale.Count > 0)
                 {
                     logger.LogWarning(
-                        "Giving up on {Count} notification deliveries to {Email} - pending longer than {MaxAgeDays} days with repeated send failures",
+                        "Giving up on {Count} notification deliveries for subscription {SubscriptionId} - pending longer than {MaxAgeDays} days with repeated send failures",
                         stale.Count,
-                        recipientEmail,
+                        group.Key,
                         MaxDeliveryAge.TotalDays
                     );
                     db.NotificationDeliveries.RemoveRange(stale);

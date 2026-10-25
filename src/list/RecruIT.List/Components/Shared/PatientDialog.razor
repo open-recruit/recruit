@@ -23,7 +23,7 @@
                     <BbSeparator />
                 }
                 <div class="bb:mt-3 bb:flex bb:items-end bb:gap-2">
-                    <BbSheetTitle style="line-height: 1;">@(Patient.Name ?? Patient.PatientId)</BbSheetTitle>
+                    <BbSheetTitle style="line-height: 1;">@Patient.DisplayName</BbSheetTitle>
                     <span class="bb:text-sm bb:font-normal bb:text-muted-foreground" style="line-height: 1;">
                         @(Patient.Age is not null ? Localizer["App.PatientDialog.AgeYo", Patient.Age] : Localizer["App.Common.AgeUnknown"])
                         &middot; @(Patient.Gender is not null ? Localizer[GenderDisplay.GetKey(Patient.Gender)].Value : Localizer["App.Common.GenderUnknown"].Value)

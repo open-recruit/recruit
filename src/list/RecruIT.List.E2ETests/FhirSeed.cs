@@ -39,7 +39,7 @@ internal static class FhirSeed
         await WaitForSearchParameterAsync(http, timeout);
 
         await PostBundleAsync(http, "sample-study-transaction-upsert.json");
-        var client = new FhirClient(fhirBaseUrl);
+        using var client = new FhirClient(fhirBaseUrl);
         await client.TransactionAsync(BuildScreeningListBundle());
     }
 

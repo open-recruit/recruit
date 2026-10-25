@@ -30,9 +30,9 @@ else
     <BbDataTable TData="PatientOverviewDto" Data="FilteredPatients" ShowToolbar="false" ShowPagination="true"
                  PageSizes="new[] { 10, 25, 50, 100 }" InitialPageSize="25" IsLoading="false">
         <Columns>
-            <BbDataTableColumn TData="PatientOverviewDto" TValue="string" Header="@Localizer["App.PatientList.ColumnName"]" Property="p => p.Name ?? p.PatientId" Sortable="true">
+            <BbDataTableColumn TData="PatientOverviewDto" TValue="string" Header="@Localizer["App.PatientList.ColumnName"]" Property="p => p.DisplayName" Sortable="true">
                 <CellTemplate Context="p">
-                    <span class="bb:font-medium">@(p.Name ?? p.PatientId)</span>
+                    <span class="bb:font-medium">@p.DisplayName</span>
                 </CellTemplate>
             </BbDataTableColumn>
             <BbDataTableColumn TData="PatientOverviewDto" TValue="int?" Header="@Localizer["App.PatientList.ColumnDemographics"]" Width="140px">
@@ -84,7 +84,7 @@ else
     private List<PatientOverviewDto> FilteredPatients => string.IsNullOrWhiteSpace(_search)
         ? _patients
         : [.. _patients.Where(p =>
-            Matches(p.Name) || Matches(p.PatientId) || p.Trials.Any(t => Matches(t.StudyAcronym)))];
+            Matches(p.DisplayName) || Matches(p.PatientId) || p.Trials.Any(t => Matches(t.StudyAcronym)))];
 
     private bool Matches(string? value) => value?.Contains(_search.Trim(), StringComparison.OrdinalIgnoreCase) ?? false;
     private bool _loading = true;
