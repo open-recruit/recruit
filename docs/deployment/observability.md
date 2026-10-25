@@ -39,7 +39,9 @@ The Helm chart includes a Grafana dashboard that brings all of this together, se
 
 ## Tracing
 
-All modules support distributed tracing using OpenTelemetry.
-See <https://github.com/opentracing-contrib/java-spring-jaeger> for the `notify` and `query` module configuration and <https://github.com/miracum/recruit/blob/master/src/list/server/config.js#L8>
-and <https://github.com/open-telemetry/opentelemetry-specification/blob/main/specification/configuration/sdk-environment-variables.md>
-for the list module setup.
+All modules support distributed tracing using OpenTelemetry, exporting traces via OTLP. Tracing is disabled by default:
+enable it via `Tracing__Enabled=true` for the screening list and `OTEL_SDK_DISABLED=false` for the query module, and
+point both at your collector using the standard
+[OpenTelemetry environment variables](https://opentelemetry.io/docs/specs/otel/configuration/sdk-environment-variables/)
+like `OTEL_EXPORTER_OTLP_ENDPOINT`. See [Kubernetes/Distributed tracing](./kubernetes.md#distributed-tracing) for an
+example.

@@ -1,70 +1,46 @@
-query:
-  extraEnv:
-    - name: JAVA_TOOL_OPTIONS
-      value: "-javaagent:/app/opentelemetry-javaagent.jar"
-    - name: OTEL_METRICS_EXPORTER
-      value: "none"
-    - name: OTEL_LOGS_EXPORTER
-      value: "none"
-    - name: OTEL_TRACES_EXPORTER
-      value: "jaeger"
-    - name: OTEL_SERVICE_NAME
-      value: "recruit-query"
-    - name: OTEL_EXPORTER_JAEGER_ENDPOINT
-      value: "http://simplest-collector.observability.svc:14250"
-
 list:
   extraEnv:
-    - name: TRACING_ENABLED
+    - name: Tracing__Enabled
       value: "true"
-    - name: OTEL_TRACES_EXPORTER
-      value: "jaeger"
     - name: OTEL_SERVICE_NAME
       value: "recruit-list"
-    - name: OTEL_EXPORTER_JAEGER_AGENT_HOST
-      value: "simplest-agent.observability.svc"
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://jaeger.observability.svc:4318"
+    - name: OTEL_EXPORTER_OTLP_PROTOCOL
+      value: "http/protobuf"
 
-notify:
+querySqlOnFhir:
   extraEnv:
-    - name: JAVA_TOOL_OPTIONS
-      value: "-javaagent:/app/opentelemetry-javaagent.jar"
-    - name: OTEL_METRICS_EXPORTER
-      value: "none"
-    - name: OTEL_LOGS_EXPORTER
-      value: "none"
+    # keeps the attrition funnel set by values-demo.yaml, since lists aren't merged across values files
+    - name: QUERY_SQL_ON_FHIR_FUNNEL_ENABLED
+      value: "true"
+    - name: OTEL_SDK_DISABLED
+      value: "false"
     - name: OTEL_TRACES_EXPORTER
-      value: "jaeger"
+      value: "otlp"
     - name: OTEL_SERVICE_NAME
-      value: "recruit-notify"
-    - name: OTEL_EXPORTER_JAEGER_ENDPOINT
-      value: "http://simplest-collector.observability.svc:14250"
+      value: "recruit-query-sql-on-fhir"
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://jaeger.observability.svc:4318"
 
 fhirserver:
+  # overrides the chart's default `fhirserver.extraEnv` and the one in values-demo.yaml, so their entries are repeated
   extraEnv:
-    # the recruit tool relies on the FHIR server subscription mechanism to create notifications.
-    # if you overwrite `fhirserver.extraEnv`, make sure to keep this setting enabled.
     - name: HAPI_FHIR_SUBSCRIPTION_RESTHOOK_ENABLED
       value: "true"
     - name: SPRING_FLYWAY_BASELINE_ON_MIGRATE
       value: "true"
-    # OTel options
+    - name: HAPI_FHIR_REUSE_CACHED_SEARCH_RESULTS_MILLIS
+      value: "0"
     - name: JAVA_TOOL_OPTIONS
-      value: "-javaagent:/app/opentelemetry-javaagent.jar"
+      value: "-XX:MaxRAMPercentage=75 -javaagent:/app/opentelemetry-javaagent.jar"
     - name: OTEL_METRICS_EXPORTER
       value: "none"
     - name: OTEL_LOGS_EXPORTER
       value: "none"
     - name: OTEL_TRACES_EXPORTER
-      value: "jaeger"
+      value: "otlp"
     - name: OTEL_SERVICE_NAME
       value: "recruit-hapi-fhir-server"
-    - name: OTEL_EXPORTER_JAEGER_ENDPOINT
-      value: "http://simplest-collector.observability.svc:14250"
-
-ohdsi:
-  webApi:
-    tracing:
-      enabled: true
-      jaeger:
-        protocol: "grpc"
-        endpoint: http://simplest-collector.observability.svc:14250
+    - name: OTEL_EXPORTER_OTLP_ENDPOINT
+      value: "http://jaeger.observability.svc:4318"

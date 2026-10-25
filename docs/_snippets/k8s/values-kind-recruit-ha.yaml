@@ -14,11 +14,6 @@ list:
           app.kubernetes.io/instance: recruit
           app.kubernetes.io/component: list
 
-postgres:
-  enabled: true
-  auth:
-    password: recruit-ha
-
 fhirserver:
   replicaCount: 2
   podDisruptionBudget:
