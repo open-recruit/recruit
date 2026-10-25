@@ -21,6 +21,7 @@
         "compose/compose.yaml",
         "docs/configuration/security.md",
         "docs/getting-started/installation.md",
+        "docs/deployment/kubernetes.md",
         "docs/_snippets/k8s/query-argo-workflow.yaml",
         {
           "type": "generic",

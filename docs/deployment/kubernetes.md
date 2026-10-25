@@ -1,204 +1,221 @@
 # Kubernetes
 
-## Introduction
+recruIT's Helm chart is published to the repository's OCI registry at `oci://ghcr.io/open-recruit/recruit/charts/recruit`.
+Every [release](https://github.com/open-recruit/recruit/releases) also has it attached as `recruit-helm-chart.tgz`.
 
-A Helm chart for deploying recruIT on a Kubernetes cluster is available in the main
-[repository's OCI registry](https://github.com/miracum/recruit/pkgs/container/recruit%2Fcharts%2Frecruit)
-and in the [MIRACUM charts](https://github.com/miracum/charts) repository. The chart can be used to deploy the application
-as well as all dependencies required for it to run ([OHDSI WebAPI](https://github.com/OHDSI/WebAPI),
-[OHDSI Atlas](https://github.com/OHDSI/Atlas), [HAPI FHIR server](https://github.com/hapifhir/hapi-fhir-jpaserver-starter)).
-The chart also includes [MailHog](https://github.com/mailhog/MailHog), a mock mail server for testing email notifications.
+The chart deploys:
 
-Using the default values provided with the chart, all dependencies are installed and all services are configured to use them.
+- the screening list (`list`), together with a Job that migrates its database ahead of every new version
+- the query module (`querySqlOnFhir`), which is disabled by default since it needs a Trino to query
+- a Job that installs recruIT's FHIR SearchParameters on every install and upgrade
 
-## Setup
+and, unless disabled, the dependencies those need:
 
-1. Setup a Kubernetes cluster using your cloud provider of choice OR in a local environment using [minikube](https://minikube.sigs.k8s.io/docs/),
-   [KinD](https://kind.sigs.k8s.io/), or [k3d](https://k3d.io/).
+- a [HAPI FHIR JPA server](https://github.com/hapifhir/hapi-fhir-jpaserver-starter) with its own PostgreSQL
+  database (`fhirserver`)
+- a PostgreSQL database for the screening list (`postgres`)
+- [MailDev](https://github.com/maildev/maildev), a mock mail server that catches notification emails (`maildev`)
 
-1. Install [kubectl](https://kubernetes.io/docs/tasks/tools/) and [helm](https://helm.sh/docs/intro/install/)
-
-## Installation
-
-Deploy recruIT to a namespace called `recruit` by running
-
-```sh
-helm install -n recruit \
-  --create-namespace \
-  --render-subchart-notes \
-  --set ohdsi.cdmInitJob.enabled=true \
-  recruit oci://ghcr.io/miracum/recruit/charts/recruit
-```
-
-As a quick check to make sure everything is running correctly, you can use the following to check the readiness of all services:
-
-```sh
-$ helm test -n recruit recruit
-
-NAME: recruit
-LAST DEPLOYED: Wed May  4 21:45:06 2022
-NAMESPACE: recruit
-STATUS: deployed
-REVISION: 1
-TEST SUITE:     recruit-fhirserver-test-endpoints
-Last Started:   Wed May  4 22:14:23 2022
-Last Completed: Wed May  4 22:14:39 2022
-Phase:          Succeeded
-TEST SUITE:     recruit-ohdsi-test-connection
-Last Started:   Wed May  4 22:14:39 2022
-Last Completed: Wed May  4 22:14:43 2022
-Phase:          Succeeded
-TEST SUITE:     recruit-test-health-probes
-Last Started:   Wed May  4 22:14:43 2022
-Last Completed: Wed May  4 22:14:49 2022
-Phase:          Succeeded
-NOTES:
-1. Get the screening list URL by running these commands:
-  http://recruit-list.127.0.0.1.nip.io/
-```
-
-## Example installation of the recruIT chart with ingress support using KinD
-
-This will demonstrate how to install recruIT on your local machine using KinD
-using the following advanced features:
-
-- create a multi-node Kubernetes cluster to demonstrate topology-zone aware pod
-  spreading for high-availability deployments
-- expose all user-facing services behing the NGINX ingress controller on a <https://nip.io> domain resolved to localhost
-- enable and enforce the restricted [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
-  to demonstrate security best practices followed by all components
-- pre-load the OMOP CDM database with SynPUF-based sample data
-
-First, create [a new cluster with Ingress support](https://kind.sigs.k8s.io/docs/user/ingress/):
-
-```sh
-cat <<EOF | kind create cluster --config=-
-kind: Cluster
-apiVersion: kind.x-k8s.io/v1alpha4
-featureGates:
-  PodSecurity: true
-nodes:
-  - role: control-plane
-    image: docker.io/kindest/node:v1.26.0@sha256:45aa9ecb5f3800932e9e35e9a45c61324d656cf5bc5dd0d6adfc1b0f8168ec5f
-    kubeadmConfigPatches:
-      - |
-        kind: InitConfiguration
-        nodeRegistration:
-          kubeletExtraArgs:
-            node-labels: "ingress-ready=true"
-    extraPortMappings:
-      - containerPort: 80
-        hostPort: 80
-        protocol: TCP
-      - containerPort: 443
-        hostPort: 443
-        protocol: TCP
-    labels:
-      topology.kubernetes.io/zone: a
-  - role: worker
-    image: docker.io/kindest/node:v1.26.0@sha256:45aa9ecb5f3800932e9e35e9a45c61324d656cf5bc5dd0d6adfc1b0f8168ec5f
-    labels:
-      topology.kubernetes.io/zone: b
-  - role: worker
-    image: docker.io/kindest/node:v1.26.0@sha256:45aa9ecb5f3800932e9e35e9a45c61324d656cf5bc5dd0d6adfc1b0f8168ec5f
-    labels:
-      topology.kubernetes.io/zone: c
-EOF
-```
-
-Install the NGINX ingress controller
-
-```sh
-kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.5.1/deploy/static/provider/kind/deploy.yaml
-```
-
-Wait until it's ready to process requests by running
-
-```sh
-kubectl wait --namespace ingress-nginx \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/component=controller \
-  --timeout=90s
-```
-
-Create a namespace for the new installation. Enable and enforce restricted pod security policies:
-
-```sh
-kubectl create namespace recruit
-kubectl label namespace recruit pod-security.kubernetes.io/enforce=restricted
-kubectl label namespace recruit pod-security.kubernetes.io/enforce-version=v1.26
-```
-
-Save the following as `values-kind-recruit.yaml`, or you can clone this repo and reference the file as `-f docs/_snippets/values-kind-recruit.yaml`.
-The `ohdsi.cdmInitJob.extraEnv` option `SETUP_SYNPUF=true` means that the OMOP database will be initialized with SynPUF
-1K sample patient data.
+For demos, the chart can also generate [Synthea](https://synthetichealth.github.io/synthea/) patients and a sample
+study (`syntheticPatients`, `sampleStudy`). The [Quickstart](../getting-started/installation.md) uses these to get
+a demo running with a single command.
 
 !!! info "Documentation for all available chart options"
 
-    You can find a complete description of all available chart configuration options here:
-    <https://github.com/open-recruit/recruit/blob/master/charts/recruit/README.md#values>
+    You can find a complete description of all chart values in the
+    [chart's README](https://github.com/open-recruit/recruit/blob/master/charts/recruit/README.md#values).
+
+## Prerequisites
+
+- a Kubernetes cluster, version 1.30 or later
+- [kubectl](https://kubernetes.io/docs/tasks/tools/) and [Helm](https://helm.sh/docs/intro/install/) 3.8 or later
+- an ingress controller to make the screening list reachable for your users
+
+## Production installation
+
+For production, replace the mock mail server with your own SMTP server and connect the modules to the services
+listed in [Docker Compose](./compose.md#production-installation): the FHIR server, Trino with a FHIR lakehouse, an
+OpenID Connect provider, and optionally a Pathling server. That page also explains what each of them needs to provide
+and how they work together.
+
+You can keep the included HAPI FHIR server and PostgreSQL databases, or replace them with your own. For highly
+available PostgreSQL clusters run inside Kubernetes, see [CloudNativePG for HA databases](#cloudnativepg-for-ha-databases).
+
+Start from the following values, which connect recruIT to external services only:
+
+```yaml title="values-recruit-production.yaml"
+--8<-- "_snippets/k8s/values-recruit-production.yaml"
+```
+
+The values refer to Secrets instead of containing credentials. Create them before installing the chart:
+
+```sh
+kubectl create namespace recruit
+
+kubectl create secret generic -n recruit recruit-list-db --from-literal=password=change-me
+kubectl create secret generic -n recruit recruit-list-oidc --from-literal=client-secret=change-me
+kubectl create secret generic -n recruit recruit-list-smtp --from-literal=smtp-password=change-me
+kubectl create secret generic -n recruit recruit-query-trino --from-literal=password=change-me
+```
+
+Then install the chart:
+
+<!-- x-release-please-start-version -->
+
+```sh
+helm upgrade --install -n recruit \
+  --version 11.0.1 \
+  -f values-recruit-production.yaml \
+  --wait \
+  recruit oci://ghcr.io/open-recruit/recruit/charts/recruit
+```
+
+<!-- x-release-please-end-version -->
+
+Register `https://recruit.example.com/signin-oidc` as the redirect URI of the `recruit-list` client with your OpenID
+Connect provider, see [Authentication](../configuration/options.md#authentication). Sign-in only works over HTTPS, so
+the ingress needs a TLS certificate, e.g. issued by [cert-manager](https://cert-manager.io/) to the
+`recruit-list-tls` Secret.
+
+To make sure the modules started and can reach the FHIR server, run the chart's tests:
+
+```sh
+helm test -n recruit recruit
+```
+
+On every scheduled run, the query module logs `Polling for ResearchStudy resources referencing a Group with SQLQuery
+Library`, followed by the studies it found and processed:
+
+```sh
+kubectl logs -n recruit deploy/recruit-query-sql-on-fhir --follow
+```
+
+### Settings the chart doesn't expose
+
+The chart sets the most important [configuration options](../configuration/options.md) from its values. Set any other
+option as an environment variable via `list.extraEnv` or `querySqlOnFhir.extraEnv`, e.g. to only recommend patients
+who meet every criterion:
+
+```yaml
+querySqlOnFhir:
+  extraEnv:
+    - name: QUERY_SQL_ON_FHIR_REQUIRE_ALL_CRITERIA_MET
+      value: "true"
+```
+
+### Database migrations
+
+Before a new version of the screening list starts, a Job named `recruit-list-migrate-<hash>` updates its database
+schema. The hash is derived from the image tag, so the Job only runs once per version, and is deleted 10 minutes after
+it finished (`list.migrationJob.ttlSecondsAfterFinished`). The screening list's pods wait for it in an init container,
+which asks the Kubernetes API whether the Job has completed. The chart creates a Role that allows just that.
+
+If the migration fails, the screening list's pods don't start. Check the Job's logs:
+
+```sh
+kubectl logs -n recruit -l app.kubernetes.io/component=list-migrate --tail=-1
+```
+
+Since the Job isn't a Helm hook, this also works when the chart is rendered with `helm template` by a GitOps tool
+like [Argo CD](https://argo-cd.readthedocs.io/) or [Flux](https://fluxcd.io/).
+
+## Example installation using KinD
+
+This walks you through installing recruIT with the demo fixtures on your local machine using
+[KinD](https://kind.sigs.k8s.io/), with:
+
+- a multi-node cluster to demonstrate topology zone aware pod spreading, see [High availability](#high-availability)
+- the screening list and the FHIR server exposed via the [Traefik](https://traefik.io/) ingress controller on
+  [nip.io](https://nip.io) domains resolving to localhost
+- the restricted [Pod Security Standard](https://kubernetes.io/docs/concepts/security/pod-security-standards/)
+  enforced, which all components comply with
+
+It needs a machine with around 16 GiB of memory.
+
+First, save the following as `kind-config.yaml` and create the cluster:
+
+```yaml title="kind-config.yaml"
+--8<-- "_snippets/k8s/kind-config.yaml"
+```
+
+```sh
+kind create cluster --config=kind-config.yaml
+```
+
+Install Traefik, with its HTTP and HTTPS ports published on the NodePorts mapped to your host's ports 80 and 443
+above:
+
+```sh
+helm upgrade --install -n traefik --create-namespace \
+  --set service.type=NodePort \
+  --set ports.web.nodePort=30080 \
+  --set ports.websecure.nodePort=30443 \
+  --wait \
+  traefik oci://ghcr.io/traefik/helm/traefik
+```
+
+Create a namespace for recruIT that enforces the restricted Pod Security Standard:
+
+```sh
+kubectl create namespace recruit
+kubectl label namespace recruit \
+  pod-security.kubernetes.io/enforce=restricted \
+  pod-security.kubernetes.io/enforce-version=latest
+```
+
+Save the following as `values-kind-recruit.yaml`. It enables the ingresses of the screening list and the FHIR server:
 
 ```yaml title="values-kind-recruit.yaml"
 --8<-- "_snippets/k8s/values-kind-recruit.yaml"
 ```
 
-And finally, run
+And finally, install the chart using these values on top of the chart's
+[`values-demo.yaml`](https://github.com/open-recruit/recruit/blob/master/charts/recruit/values-demo.yaml), which is
+explained in the [Quickstart](../getting-started/installation.md):
+
+<!-- x-release-please-start-version -->
 
 ```sh
-helm install -n recruit \
+helm upgrade --install -n recruit \
   --render-subchart-notes \
+  --version 11.0.1 \
+  -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.1/charts/recruit/values-demo.yaml \
   -f values-kind-recruit.yaml \
-  --set ohdsi.cdmInitJob.enabled=true \
-  --set ohdsi.loadCohortDefinitionsJob.enabled=true \
-  recruit oci://ghcr.io/miracum/recruit/charts/recruit
+  --wait \
+  --timeout 30m \
+  recruit oci://ghcr.io/open-recruit/recruit/charts/recruit
 ```
 
-!!! warning "CDM init job"
+<!-- x-release-please-end-version -->
 
-    The included CDM initialization job is currently not idempotent and may cause problems if ran multiple times.
-    You should set `ohdsi.cdmInitJob.enabled=false` when the job has completed once when changing the chart configuration.
-    Similarly, you should set `ohdsi.loadCohortDefinitionsJob.enabled=false` to avoid creating duplicate cohort definitions.
+The install takes several minutes to download the images, generate the synthetic patients, and load them into the FHIR
+server. Once the command exits, these services are reachable:
 
-The application stack is now deployed. You can wait for the OMOP CDM init job to be done by running the following.
-This may take quite some time to complete.
+| Service                | URL                                                 |
+| ---------------------- | --------------------------------------------------- |
+| recruIT Screening List | <http://recruit-list.127.0.0.1.nip.io/>             |
+| HAPI FHIR Server       | <http://recruit-fhir-server.127.0.0.1.nip.io/fhir/> |
+
+The query module checks for studies every minute, so the sample study's screening list shows up about a minute later:
+
+![The screening list of the sample study](../_img/screenshots/hero/screening-list-light.png#only-light)
+![The screening list of the sample study](../_img/screenshots/hero/screening-list-dark.png#only-dark)
+
+MailDev doesn't have an ingress. To read the notification emails it caught, forward its port and open
+<http://127.0.0.1:1080>:
 
 ```sh
-kubectl wait job \
-  --namespace=recruit \
-  --for=condition=Complete \
-  --selector=app.kubernetes.io/component=cdm-init \
-  --timeout=1h
+kubectl port-forward -n recruit svc/recruit-maildev-web 1080:1080
 ```
 
-At this point, all externally exposed services should be accessible:
+See [Notifications](../configuration/notifications.md) for how to subscribe to a study and trigger a notification. To
+create additional studies, follow [Creating your first study](../getting-started/creating-your-first-study.md).
 
-| Service                | Ingress URL                                    |
-| ---------------------- | ---------------------------------------------- |
-| OHDSI Atlas            | <http://recruit-ohdsi.127.0.0.1.nip.io/atlas/> |
-| recruIT Screening List | <http://recruit-list.127.0.0.1.nip.io/>        |
-| HAPI FHIR Server       | <http://recruit-fhir-server.127.0.0.1.nip.io/> |
-| MailHog                | <http://recruit-mailhog.127.0.0.1.nip.io/>     |
+To remove everything again, delete the cluster:
 
-The `values-kind-recruit.yaml` used to install the chart automatically loaded a sample cohort defined in
-the `ohdsi.loadCohortDefinitionsJob.cohortDefinitions` setting. If the CDM init job completed and the query module
-ran at least once, you should see a notification email at <http://recruit-mailhog.127.0.0.1.nip.io/>:
-
-<!-- markdownlint-disable MD033 -->
-<figure markdown>
-  ![Notification Email for the SAMPLE study displayed in MailHog](../_img/k8s/mailhog-sample-mail-notification.png)
-  <figcaption>Notification Email for the SAMPLE study displayed in MailHog</figcaption>
-</figure>
-
-and the corresponding screening list is accesible at <http://recruit-list.127.0.0.1.nip.io/>:
-
-<figure markdown>
-  ![Screening list for the SAMPLE study](../_img/k8s/screeninglist-sample-study.png)
-  <figcaption>Screening list for the SAMPLE study</figcaption>
-</figure>
-
-To create additional studies, follow the [Creating your first study](../getting-started/creating-your-first-study.md)
-guide using Atlas at <http://recruit-ohdsi.127.0.0.1.nip.io/atlas/>. Be sure to use `[recruIT]` as the special
-label instead of `[UC1]` as the values above override `query.cohortSelectorLabels[0]=recruIT`.
+```sh
+kind delete cluster
+```
 
 ## Metrics
 
@@ -206,30 +223,47 @@ All modules expose metrics in Prometheus format (see [Observability](./observabi
 these metrics by integrating with the widely used [Prometheus Operator](https://prometheus-operator.dev/):
 
 ```sh
-helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
-helm install --create-namespace -n monitoring kube-prometheus-stack prometheus-community/kube-prometheus-stack
+helm upgrade --install -n monitoring --create-namespace \
+  kube-prometheus-stack oci://ghcr.io/prometheus-community/charts/kube-prometheus-stack
 ```
 
-You can now update your release by combining the `values-kind-recruit.yaml` from above with the following:
+You can now update your release by combining the values from above with the following:
 
 ```yaml title="values-kind-recruit-enable-servicemonitors.yaml"
 --8<-- "_snippets/k8s/values-kind-recruit-enable-servicemonitors.yaml"
 ```
 
+<!-- x-release-please-start-version -->
+
 ```sh
 helm upgrade -n recruit \
+  --version 11.0.1 \
+  -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.1/charts/recruit/values-demo.yaml \
   -f values-kind-recruit.yaml \
   -f values-kind-recruit-enable-servicemonitors.yaml \
-  recruit oci://ghcr.io/miracum/recruit/charts/recruit
+  --wait \
+  recruit oci://ghcr.io/open-recruit/recruit/charts/recruit
 ```
 
-`grafanaDashboard.enabled` creates a ConfigMap with recruIT's Grafana dashboard, which the Grafana included with
-`kube-prometheus-stack` picks up on its own. Open it as **recruIT** in Grafana's dashboard list:
+<!-- x-release-please-end-version -->
 
+`grafanaDashboard.enabled` creates a ConfigMap with recruIT's Grafana dashboard, which the Grafana included with
+`kube-prometheus-stack` picks up on its own. To open it, forward Grafana's port:
+
+```sh
+kubectl port-forward -n monitoring svc/kube-prometheus-stack-grafana 3000:80
+```
+
+Then sign in at <http://127.0.0.1:3000> as `admin`, with the password from
+`kubectl get secret -n monitoring kube-prometheus-stack-grafana -o jsonpath='{.data.admin-password}' | base64 -d`,
+and open **recruIT** in the dashboard list:
+
+<!-- markdownlint-disable MD033 -->
 <figure markdown>
   ![The recruIT dashboard in Grafana](_img/grafana-recruit-dashboard.png)
   <figcaption>The recruIT dashboard in Grafana</figcaption>
 </figure>
+<!-- markdownlint-enable MD033 -->
 
 The dashboard finds the screening list's and the query module's metrics by their Prometheus `job` label, which the
 ServiceMonitors set to the services' names, so it picks the first job containing `list` and `query`. If you scrape
@@ -239,23 +273,50 @@ Grafana's dashboard sidecar only looks for ConfigMaps labeled `grafana_dashboard
 only in its own namespace. Use `grafanaDashboard.labels` and `grafanaDashboard.namespace` to match yours. Without the
 sidecar, import `charts/recruit/files/dashboards/recruit.json` from the repository in Grafana instead.
 
-## High-Availability
+## High availability
 
-The FHIR server, the screening list, and the notification module support running using multiple replicas to ensure
-high-availability in case of individual component failures.
-Scaling up the notification module requires setting up a backend database for persistence to avoid sending duplicate emails.
-Setting `notify.ha.enabled=true` and `postgresql.enabled=true` in the values will deploy an integrated PostgreSQL database
-for the notification module. See the options under the `notify.ha.database` key for specifying a custom database to use.
+The screening list and the FHIR server support running multiple replicas, so they stay available if a single pod or
+node fails. The screening list keeps all of its state, including its notification job queue, in PostgreSQL, so its
+replicas don't need any further setup. The query module should only run as a single replica.
 
-The snippet below configures the release to run multiple replicas of any supporting service, enables [pod disruption budget](https://kubernetes.io/docs/tasks/run-application/configure-pdb/)
-resources, and uses [pod topology spread constraints](https://kubernetes.io/docs/concepts/workloads/pods/pod-topology-spread-constraints/)
-to spread the pods across node topology zones.
-
-For information on setting up recruIT with highly-available PostgreSQL clusters provided by [CloudNativePG](https://cloudnative-pg.io/),
-see [below](#cloudnativepg-for-ha-databases).
+The following values run two replicas of both, create
+[PodDisruptionBudgets](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) for them, and use
+[pod topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)
+to spread their pods across the cluster's topology zones:
 
 ```yaml title="values-kind-recruit-ha.yaml"
 --8<-- "_snippets/k8s/values-kind-recruit-ha.yaml"
+```
+
+The included PostgreSQL databases only run a single instance. For highly available databases, see
+[CloudNativePG for HA databases](#cloudnativepg-for-ha-databases).
+
+## CloudNativePG for HA databases
+
+Install the [CloudNativePG](https://cloudnative-pg.io/) operator first:
+
+```sh
+helm upgrade --install -n cnpg-system --create-namespace \
+  --repo https://cloudnative-pg.github.io/charts \
+  --wait \
+  cnpg cloudnative-pg
+```
+
+Next, create PostgreSQL clusters and users for the HAPI FHIR server and the screening list:
+
+```yaml title="cnpg-clusters.yaml"
+--8<-- "_snippets/k8s/cnpg-clusters.yaml"
+```
+
+```sh
+kubectl apply -n recruit -f cnpg-clusters.yaml
+```
+
+Finally, install the recruIT chart with the following values added, which replace the included PostgreSQL databases
+with the clusters' read-write services:
+
+```yaml title="values-kind-recruit-with-cnpg.yaml"
+--8<-- "_snippets/k8s/values-kind-recruit-with-cnpg.yaml"
 ```
 
 ## Service mesh integration
@@ -265,134 +326,81 @@ communication via mTLS.
 
 ### Linkerd
 
-The following `values-kind-recruit-linkerd.yaml` shows how to configure the chart release
-to place Linkerd's `linkerd.io/inject: enabled` annotation for all service pods (excluding pods created by Jobs):
+The following values add Linkerd's `linkerd.io/inject: enabled` annotation to the pods of all services. The chart's
+Jobs have their own `podAnnotations` and aren't injected, since a sidecar would keep them from completing. The ports
+of PostgreSQL and SMTP, whose protocols Linkerd can't detect, are marked as opaque:
 
 ```yaml title="values-kind-recruit-linkerd.yaml"
 --8<-- "_snippets/k8s/values-kind-recruit-linkerd.yaml"
 ```
 
-<figure markdown>
-  ![Linkerd dashboard view of the recruiT deployment](_img/linkerd-dashboard.png)
-  <figcaption>Linkerd dashboard view of the recruiT deployment</figcaption>
-</figure>
-
-You can also use the `linkerd.io/inject: enabled` on the `recruit` namespace, see <https://linkerd.io/2.11/features/proxy-injection/>
-but you will have to manually add a `disabled` annotation to the OHDSI Achilles CronJob and init job.
+You can also add the `linkerd.io/inject: enabled` annotation to the `recruit` namespace instead, see
+[Automatic proxy injection](https://linkerd.io/2-edge/features/proxy-injection/), but then have to disable it for the
+chart's Jobs as shown for Istio below.
 
 ### Istio
 
-Add a namespace label to instruct Istio to automatically inject Envoy sidecar proxies when you deploy your application later:
+Label the namespace to have Istio inject its Envoy sidecar into every pod deployed to it:
 
 ```sh
 kubectl label namespace recruit istio-injection=enabled
 ```
 
-To disable sidecar proxy injection for the Achilles and OMOP CDM init job, see the following values.yaml:
+and disable the injection for the chart's Jobs:
 
 ```yaml title="values-kind-recruit-istio.yaml"
 --8<-- "_snippets/k8s/values-kind-recruit-istio.yaml"
 ```
 
-<figure markdown>
-  ![Kiali dashboard view of the recruiT deployment](_img/kiali-dashboard.png)
-  <figcaption>Kiali dashboard view of the recruiT deployment</figcaption>
-</figure>
-
 ## Zero-trust networking
 
-To limit the communication between the components you can deploy [Kubernetes NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/)
-resources. Because the details of a deployment can differ significantly (external databases, dependencies spread across
-several namespaces, etc.), no generic `NetworkPolicy` resources are included in the Helm chart. Instead, the following
-policies and explanations should provide a starting point for customization.
+To limit the communication between the components, you can deploy
+[Kubernetes NetworkPolicy](https://kubernetes.io/docs/concepts/services-networking/network-policies/) resources.
+Because the details of a deployment can differ significantly (external databases, dependencies spread across several
+namespaces, etc.), no `NetworkPolicy` resources are included in the Helm chart. Instead, the following policies and
+explanations should provide a starting point for customization.
 
 The policies are based on these assumptions:
 
-1. the recruit application is deployed in a namespace called `recruit`
-1. the OHDSI stack is deployed in a namespace called `ohdsi`
-1. the SMTP server is running on a host outside the cluster at IP `192.0.2.1` and port `1025`
-1. the Prometheus monitoring stack is deployed in a namespace called `monitoring`
+1. recruIT is deployed as a release named `recruit` in a namespace called `recruit`, with the included HAPI FHIR
+   server and PostgreSQL databases
+1. Trino is deployed in a namespace called `trino`
+1. the SMTP server is running on a host outside the cluster at IP `192.0.2.1` and port `587`
+1. the Kubernetes API server is reachable at IP `192.0.2.10` and port `6443`
+1. the Prometheus monitoring stack from [Metrics](#metrics) is deployed in a namespace called `monitoring`
+1. the ingress controller is Traefik, deployed in a namespace called `traefik`
 
-You can use <https://editor.cilium.io/> to visualize and edit individual policies
-or <https://orca.tufin.io/netpol/#> to have the entire policies explained.
+Everything not explicitly allowed is denied, including the pods `helm test` starts. You can use
+<https://editor.networkpolicy.io/> to visualize and edit individual policies.
 
 ```yaml title="recruit-network-policies.yaml"
 --8<-- "_snippets/k8s/recruit-network-policies.yaml"
 ```
 
-## Distributed Tracing
+## Distributed tracing
 
-All services support distributed tracing based on OpenTelemetry.
+All modules support distributed tracing based on OpenTelemetry, exporting traces via OTLP.
 
-For testing, you can install the Jaeger operator to prepare your cluster for tracing.
+For testing, you can install an all-in-one [Jaeger](https://www.jaegertracing.io/) instance, which keeps the traces in
+memory:
 
 ```sh
-# Cert-Manager is required by the Jaeger Operator
-# See <https://cert-manager.io/docs/installation/> for details.
-kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.9.1/cert-manager.yaml
-
-kubectl wait --namespace cert-manager \
-  --for=condition=ready pod \
-  --selector=app.kubernetes.io/instance=cert-manager \
-  --timeout=5m
-
-kubectl create namespace observability
-kubectl create -n observability -f https://github.com/jaegertracing/jaeger-operator/releases/download/v1.38.0/jaeger-operator.yaml
-
-kubectl wait --namespace observability \
-  --for=condition=ready pod \
-  --selector=name=jaeger-operator \
-  --timeout=5m
-
-cat <<EOF | kubectl apply -n observability -f -
-# simple, all-in-one Jaeger installation. Not suitable for production use.
-apiVersion: jaegertracing.io/v1
-kind: Jaeger
-metadata:
-  name: simplest
-EOF
+helm upgrade --install -n observability --create-namespace \
+  --repo https://jaegertracing.github.io/helm-charts \
+  --wait \
+  jaeger jaeger
 ```
 
-The following values enable tracing for the query, list, and notify module, the HAPI FHIR server and the OHDSI WebAPI:
+The following values enable tracing for the screening list, the query module, and the HAPI FHIR server:
 
 ```yaml title="values-kind-recruit-tracing.yaml"
 --8<-- "_snippets/k8s/values-kind-recruit-tracing.yaml"
 ```
 
-<figure markdown>
-  ![Jaeger Trace Graph view of a single scheduled run of the query module](_img/jaeger-trace-graph.png)
-  <figcaption>Jaeger Trace Graph view of a single scheduled run of the query module</figcaption>
-</figure>
-
-<figure markdown>
-  ![Jaeger Trace timeline for interacting with the screening list](_img/jaeger-trace-timeline.png)
-  <figcaption>Jaeger Trace timeline for interacting with the screening list</figcaption>
-</figure>
-
-## CloudNativePG for HA databases
-
-Install the CloudNativePG operator first
-[by following the official documentation site](https://cloudnative-pg.io/documentation/1.18/installation_upgrade/):
+To view the traces, forward Jaeger's port and open <http://127.0.0.1:16686>:
 
 ```sh
-kubectl apply -f https://raw.githubusercontent.com/cloudnative-pg/cloudnative-pg/release-1.18/releases/cnpg-1.18.0.yaml
-```
-
-Next, create PostgreSQL clusters and pre-configured users for OHDSI, the HAPI FHIR server,
-and the notify module:
-
-```yaml title="cnpg-clusters.yaml"
---8<-- "_snippets/k8s/cnpg-clusters.yaml"
-```
-
-```sh
-kubectl apply -f cnpg-clusters.yaml
-```
-
-Finally, install the recruIT chart using the following updated values.yaml:
-
-```yaml title="values-kind-recruit-with-cnpg.yaml"
---8<-- "_snippets/k8s/values-kind-recruit-with-cnpg.yaml"
+kubectl port-forward -n observability svc/jaeger 16686:16686
 ```
 
 ## Running the query module using Argo Workflows
@@ -401,7 +409,7 @@ By default, the query module runs on its own schedule. It can also run once and 
 `QUERY_SQL_ON_FHIR_RUN_MODE=one-shot`, which is useful for running it right after the jobs that update the data it
 queries, e.g. using [Airflow](https://airflow.apache.org/docs/apache-airflow/stable/administration-and-deployment/kubernetes.html)
 or [Argo Workflows](https://argoproj.github.io/argo-workflows/). It exits with a non-zero code if any study failed, so
-the workflow step fails too.
+the workflow step fails too. Set `querySqlOnFhir.enabled=false` in the chart so it doesn't also run on its schedule.
 
 Below you can find an example for running the query module as part of a larger workflow. Adjust the FHIR server and
 Trino settings to your installation, see [Configuration options](../configuration/options.md):

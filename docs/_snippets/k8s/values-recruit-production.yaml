@@ -1,0 +1,79 @@
+# your own FHIR server instead of the included HAPI FHIR server
+fhirserver:
+  enabled: false
+externalFhirServer:
+  url: https://fhir.example.com/fhir
+
+# your own SMTP server instead of the included mock mail server, see `list.notifications.email.smtp`
+maildev:
+  enabled: false
+
+# your own PostgreSQL database instead of the included one, see `list.database`
+postgres:
+  enabled: false
+
+list:
+  replicaCount: 2
+  podDisruptionBudget:
+    enabled: true
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      memory: 512Mi
+  database:
+    # without credentials, they're set via `username` and the Secret below
+    connectionString: "Host=postgres.example.com;Port=5432;Database=recruit"
+    username: recruit
+    existingSecret:
+      name: recruit-list-db
+      key: password
+  auth:
+    enabled: true
+    oidc:
+      authority: https://auth.example.com/realms/recruit
+      clientId: recruit-list
+      existingSecret:
+        name: recruit-list-oidc
+        key: client-secret
+      roleClaimType: role
+  notifications:
+    email:
+      from: recruit@example.com
+      smtp:
+        host: smtp.example.com
+        port: 587
+        username: recruit
+        # must contain an `smtp-password` key
+        existingSecret: recruit-list-smtp
+  ingress:
+    enabled: true
+    hosts:
+      # also used as the base URL of the links in notification emails
+      - host: recruit.example.com
+        paths: ["/"]
+    tls:
+      - secretName: recruit-list-tls
+        hosts:
+          - recruit.example.com
+
+querySqlOnFhir:
+  enabled: true
+  schedule: "@hourly"
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      memory: 1Gi
+  trino:
+    jdbcUrl: jdbc:trino://trino.example.com:443/fhir/default?SSL=true
+    auth:
+      username: recruit
+      existingSecret:
+        name: recruit-query-trino
+        key: password
+  # optional, for criteria Trino can't run directly
+  sqlOnFhir:
+    url: ""
