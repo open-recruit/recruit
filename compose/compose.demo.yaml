@@ -32,7 +32,7 @@ services:
       - db
 
   db:
-    image: docker.io/library/postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636
+    image: docker.io/library/postgres:18.6@sha256:edb0c08dc33befd0262ab3b5cf1c4f3f8cfd8b09e88c05b45adee29d6761ddb6
     restart: unless-stopped
     ipc: private
     security_opt:
@@ -85,7 +85,7 @@ services:
   # ResearchStudy. Runs after the SearchParameters are installed, so the new resources get indexed
   # by them right away. All bundles use PUT, so this is safe to re-run on every `up`.
   load-sample-resources:
-    image: docker.io/curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+    image: docker.io/curlimages/curl:8.23.0@sha256:11e64e28c5f58c8d93ee95fcf22ac055f48b0bc440e0ce7d8013bbb5ad6aa8ac
     restart: "no"
     ipc: none
     security_opt:
@@ -296,7 +296,7 @@ services:
   # SearchParameters and sample resources are loaded into the FHIR server, the Delta tables are
   # registered and queryable via Trino, and the list UI is ready to serve requests.
   ready:
-    image: docker.io/curlimages/curl:8.22.0@sha256:58adaa4e8dca9c988bae2aba4ab3434a0bb2da16bbe3f92dec39ec7785166777
+    image: docker.io/curlimages/curl:8.23.0@sha256:11e64e28c5f58c8d93ee95fcf22ac055f48b0bc440e0ce7d8013bbb5ad6aa8ac
     restart: "no"
     ipc: none
     security_opt:
