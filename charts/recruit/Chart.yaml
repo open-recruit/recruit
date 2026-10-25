@@ -56,5 +56,3 @@ annotations:
   artifacthub.io/changes: |-
     - kind: changed
       description: updated recruIT image tags to v11.0.0 # x-release-please-version
-    - kind: changed
-      description: dropped all bitnami charts and images
