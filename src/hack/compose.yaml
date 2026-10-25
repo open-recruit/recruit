@@ -161,7 +161,7 @@ services:
       - "127.0.0.1:8083:8080"
 
   seaweedfs:
-    image: docker.io/chrislusf/seaweedfs:4.48@sha256:4e61d15fd35994cb1e43e1e553dff106794841fd9a99ade2fc8c8bfce4d7872d
+    image: docker.io/chrislusf/seaweedfs:4.50@sha256:c2658820e763294a9e9de7b36c81e59b879e3459148351aee4e31a126ca64860
     restart: unless-stopped
     # the image's own seaweed user. Setting it here skips the entrypoint's chown + su-exec dance,
     # which would otherwise need CAP_CHOWN/CAP_SETUID/CAP_SETGID.
