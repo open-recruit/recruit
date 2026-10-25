@@ -147,7 +147,7 @@ above:
 
 ```sh
 helm upgrade --install -n traefik --create-namespace \
-  --set service.type=NodePort \
+  --set service.spec.type=NodePort \
   --set ports.web.nodePort=30080 \
   --set ports.websecure.nodePort=30443 \
   --wait \
