@@ -1,5 +1,23 @@
 # Changelog
 
+## [11.0.1](https://github.com/open-recruit/recruit/compare/v11.0.0...v11.0.1) (2026-10-25)
+
+
+### Bug Fixes
+
+* compose release still pinned to a PR tag ([#678](https://github.com/open-recruit/recruit/issues/678)) ([8a9ee96](https://github.com/open-recruit/recruit/commit/8a9ee9680bc2a51eff57fe422a8c68316bac03e6))
+* read-only duckdb temp dir ([#680](https://github.com/open-recruit/recruit/issues/680)) ([598e41c](https://github.com/open-recruit/recruit/commit/598e41c61200a302a076511d8343b80fb722b5ef))
+
+
+### Documentation
+
+* screenshots ([#682](https://github.com/open-recruit/recruit/issues/682)) ([9532c02](https://github.com/open-recruit/recruit/commit/9532c0259fa2a406f7459e17433009129a6c1bb3))
+
+
+### Miscellaneous Chores
+
+* reset chart changelog after v11.0.0 ([#677](https://github.com/open-recruit/recruit/issues/677)) ([10d3fce](https://github.com/open-recruit/recruit/commit/10d3fce644ecf3f8be817256c6e751dbc8458aec))
+
 ## [11.0.0](https://github.com/open-recruit/recruit/compare/v10.5.7...v11.0.0) (2026-10-25)
 
 
