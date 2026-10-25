@@ -143,7 +143,7 @@ public sealed class ScreeningListService(
                     overview = new PatientOverviewDto
                     {
                         PatientId = patientId,
-                        Name = FormatPatientName(patient),
+                        DisplayName = FhirBundleHelpers.GetPatientDisplayName(patient, patientId),
                         BirthDate = FhirBundleHelpers.ParseFhirInstant(patient?.BirthDate),
                         Gender = EnumUtility.GetLiteral(patient?.Gender),
                         Trials = [],
@@ -157,7 +157,7 @@ public sealed class ScreeningListService(
                         ResearchSubjectId = subject.Id!,
                         ResearchSubjectIdentifier = subject.GetResearchSubjectIdentifierToken(),
                         PatientId = patientId,
-                        Name = overview.Name,
+                        DisplayName = overview.DisplayName,
                         BirthDate = overview.BirthDate,
                         Gender = overview.Gender,
                         Phone = GetPhone(patient),
@@ -188,7 +188,7 @@ public sealed class ScreeningListService(
         }
 
         return overviewsByPatient
-            .Values.OrderBy(o => o.Name ?? o.PatientId, StringComparer.OrdinalIgnoreCase)
+            .Values.OrderBy(o => o.DisplayName, StringComparer.OrdinalIgnoreCase)
             .ToList();
     }
 
@@ -293,7 +293,10 @@ public sealed class ScreeningListService(
                     ResearchSubjectId = subject.Id!,
                     ResearchSubjectIdentifier = subject.GetResearchSubjectIdentifierToken(),
                     PatientId = patientId ?? string.Empty,
-                    Name = FormatPatientName(patient),
+                    DisplayName = FhirBundleHelpers.GetPatientDisplayName(
+                        patient,
+                        patientId ?? string.Empty
+                    ),
                     MedicalRecordNumber = patient?.GetMedicalRecordNumber(),
                     BirthDate = FhirBundleHelpers.ParseFhirInstant(patient?.BirthDate),
                     Gender = EnumUtility.GetLiteral(patient?.Gender),
@@ -556,20 +559,4 @@ public sealed class ScreeningListService(
         string? Title,
         string StudyId
     );
-
-    /// <summary>Internal so NotificationDetectorService can reuse it rather than reimplementing.</summary>
-    internal static string? FormatPatientName(Patient? patient)
-    {
-        var name = patient?.Name?.FirstOrDefault();
-        if (name is null)
-        {
-            return null;
-        }
-
-        var given = string.Join(' ', name.Given ?? []);
-        return string.Join(
-            ' ',
-            new[] { given, name.Family }.Where(s => !string.IsNullOrWhiteSpace(s))
-        );
-    }
 }

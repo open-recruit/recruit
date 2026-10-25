@@ -11,6 +11,8 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
 
     public DbSet<ScreeningNote> ScreeningNotes => Set<ScreeningNote>();
 
+    public DbSet<ScreeningNoteRevision> ScreeningNoteRevisions => Set<ScreeningNoteRevision>();
+
     public DbSet<NotificationSubscription> NotificationSubscriptions =>
         Set<NotificationSubscription>();
 
@@ -49,6 +51,11 @@ public sealed class AppDbContext(DbContextOptions<AppDbContext> options) : DbCon
         {
             // The hot lookup path - GetNotesAsync/GetTimelineAsync both key off this.
             entity.HasIndex(n => n.ResearchSubjectIdentifier);
+            entity
+                .HasMany(n => n.Revisions)
+                .WithOne()
+                .HasForeignKey(r => r.ScreeningNoteId)
+                .OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<NotificationSubscription>(entity =>

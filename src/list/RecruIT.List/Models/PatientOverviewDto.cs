@@ -5,7 +5,8 @@ public sealed class PatientOverviewDto
 {
     public required string PatientId { get; init; }
 
-    public string? Name { get; init; }
+    /// <summary>See FhirBundleHelpers.GetPatientDisplayName - the one label used for a patient everywhere.</summary>
+    public required string DisplayName { get; init; }
 
     public DateTimeOffset? BirthDate { get; init; }
 

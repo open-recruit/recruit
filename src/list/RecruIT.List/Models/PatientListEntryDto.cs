@@ -14,9 +14,10 @@ public sealed class PatientListEntryDto
 
     public required string PatientId { get; init; }
 
-    public string? Name { get; init; }
+    /// <summary>See FhirBundleHelpers.GetPatientDisplayName - the one label used for a patient everywhere.</summary>
+    public required string DisplayName { get; init; }
 
-    /// <summary>Patient.identifier value with type MR (medical record number) - shown when Name is absent.</summary>
+    /// <summary>Patient.identifier value with type MR (medical record number) - kept for search, since DisplayName only falls back to it when there's no name.</summary>
     public string? MedicalRecordNumber { get; init; }
 
     public DateTimeOffset? BirthDate { get; init; }

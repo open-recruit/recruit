@@ -219,4 +219,147 @@ public sealed class ScreeningNoteServiceTests
         );
         Assert.Equal("coord@example.com", note.Author);
     }
+
+    [Fact]
+    public async Task UpdateNoteAsync_replaces_the_text_and_keeps_the_previous_version()
+    {
+        var (notes, factory) = CreateService();
+        using var _ = factory;
+        await SeedGrantAsync(
+            factory,
+            TrialA,
+            "coord@example.com",
+            TrialPermissionLevel.Coordinator,
+            "coord-1"
+        );
+        var user = CreateUser(sub: "coord-1", email: "coord@example.com", name: "Coord Person");
+        await notes.AddNoteAsync(
+            SubjectAIdentifier,
+            "first",
+            TrialA,
+            user,
+            TestContext.Current.CancellationToken
+        );
+        var original = Assert.Single(
+            await notes.GetNotesAsync(SubjectAIdentifier, TestContext.Current.CancellationToken)
+        );
+
+        await notes.UpdateNoteAsync(
+            original.Id,
+            "second",
+            TrialA,
+            user,
+            TestContext.Current.CancellationToken
+        );
+        await notes.UpdateNoteAsync(
+            original.Id,
+            "third",
+            TrialA,
+            user,
+            TestContext.Current.CancellationToken
+        );
+
+        var edited = Assert.Single(
+            await notes.GetNotesAsync(SubjectAIdentifier, TestContext.Current.CancellationToken)
+        );
+        Assert.Equal("third", edited.Text);
+        Assert.Equal(original.Time, edited.Time);
+        Assert.NotNull(edited.EditedAt);
+        Assert.Equal(["first", "second"], edited.PreviousVersions.Select(v => v.Text));
+        Assert.Equal(original.Time, edited.PreviousVersions[0].WrittenAt);
+    }
+
+    [Fact]
+    public async Task UpdateNoteAsync_with_unchanged_text_records_no_revision()
+    {
+        var (notes, factory) = CreateService();
+        using var _ = factory;
+        await SeedGrantAsync(
+            factory,
+            TrialA,
+            "coord@example.com",
+            TrialPermissionLevel.Coordinator,
+            "coord-1"
+        );
+        var user = CreateUser(sub: "coord-1", email: "coord@example.com");
+        await notes.AddNoteAsync(
+            SubjectAIdentifier,
+            "same",
+            TrialA,
+            user,
+            TestContext.Current.CancellationToken
+        );
+        var note = Assert.Single(
+            await notes.GetNotesAsync(SubjectAIdentifier, TestContext.Current.CancellationToken)
+        );
+
+        await notes.UpdateNoteAsync(
+            note.Id,
+            "same",
+            TrialA,
+            user,
+            TestContext.Current.CancellationToken
+        );
+
+        var result = Assert.Single(
+            await notes.GetNotesAsync(SubjectAIdentifier, TestContext.Current.CancellationToken)
+        );
+        Assert.Null(result.EditedAt);
+        Assert.Empty(result.PreviousVersions);
+    }
+
+    [Fact]
+    public async Task UpdateNoteAsync_by_someone_other_than_the_author_throws_UnauthorizedAccessException()
+    {
+        var (notes, factory) = CreateService();
+        using var _ = factory;
+        await SeedGrantAsync(
+            factory,
+            TrialA,
+            "coord@example.com",
+            TrialPermissionLevel.Coordinator,
+            "coord-1"
+        );
+        await SeedGrantAsync(
+            factory,
+            TrialA,
+            "other@example.com",
+            TrialPermissionLevel.Coordinator,
+            "coord-2"
+        );
+        var author = CreateUser(sub: "coord-1", email: "coord@example.com");
+        var other = CreateUser(sub: "coord-2", email: "other@example.com");
+        await notes.AddNoteAsync(
+            SubjectAIdentifier,
+            "mine",
+            TrialA,
+            author,
+            TestContext.Current.CancellationToken
+        );
+        var note = Assert.Single(
+            await notes.GetNotesAsync(SubjectAIdentifier, TestContext.Current.CancellationToken)
+        );
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            notes.UpdateNoteAsync(
+                note.Id,
+                "not yours",
+                TrialA,
+                other,
+                TestContext.Current.CancellationToken
+            )
+        );
+
+        Assert.Equal(
+            "mine",
+            Assert
+                .Single(
+                    await notes.GetNotesAsync(
+                        SubjectAIdentifier,
+                        TestContext.Current.CancellationToken
+                    )
+                )
+                .Text
+        );
+    }
 }
