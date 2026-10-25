@@ -20,8 +20,8 @@ public static class NotificationScheduling
 
     /// <summary>
     /// Instant emails go out immediately (ScheduledFor = the event's own OccurredAt); everything
-    /// else is scheduled for the subscriber's next digest slot, evaluated in their own time zone
-    /// (timeZoneId, an IANA id captured client-side at subscribe time - see
+    /// else is scheduled for the subscriber's first digest slot strictly after the event, evaluated
+    /// in their own time zone (timeZoneId, an IANA id captured client-side at subscribe time - see
     /// NotificationSubscribeButton.razor).
     /// </summary>
     public static DateTimeOffset ComputeEmailScheduledFor(
@@ -38,32 +38,38 @@ public static class NotificationScheduling
         }
 
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-        var referenceLocal = TimeZoneInfo.ConvertTime(occurredAt, timeZone).DateTime;
 
-        var candidateLocal = frequency switch
+        // Start from the day before the event's local date: a slot's later pass through a "fall
+        // back" overlap can still be ahead of an event whose local time already reads the next day.
+        var searchFrom = TimeZoneInfo.ConvertTime(occurredAt, timeZone).Date.AddDays(-1);
+
+        var slotLocal = frequency switch
         {
-            NotificationFrequency.Daily => NextDailyOccurrence(
-                referenceLocal,
-                timeOfDay
+            NotificationFrequency.Daily => searchFrom
+                + (
+                    timeOfDay
                     ?? throw new ArgumentException(
                         "timeOfDay is required for Daily frequency.",
                         nameof(timeOfDay)
                     )
-            ),
-            NotificationFrequency.Weekly => NextWeeklyOccurrence(
-                referenceLocal,
+                ).ToTimeSpan(),
+            NotificationFrequency.Weekly => FirstOnOrAfter(
+                searchFrom,
                 dayOfWeek
                     ?? throw new ArgumentException(
                         "dayOfWeek is required for Weekly frequency.",
                         nameof(dayOfWeek)
-                    ),
-                timeOfDay
+                    )
+            )
+                + (
+                    timeOfDay
                     ?? throw new ArgumentException(
                         "timeOfDay is required for Weekly frequency.",
                         nameof(timeOfDay)
                     )
-            ),
-            NotificationFrequency.Monthly => NextMonthlyOccurrence(referenceLocal),
+                ).ToTimeSpan(),
+            NotificationFrequency.Monthly => new DateTime(searchFrom.Year, searchFrom.Month, 1)
+                + MonthlyDigestTime.ToTimeSpan(),
             _ => throw new ArgumentOutOfRangeException(
                 nameof(frequency),
                 frequency,
@@ -71,63 +77,67 @@ public static class NotificationScheduling
             ),
         };
 
-        return ToLocalOffset(candidateLocal, timeZone);
+        // Compare instants rather than wall-clock times: during a "fall back" overlap, a slot whose
+        // wall-clock time has already passed once is still ahead, on its later pass.
+        while (true)
+        {
+            var slot = ToLocalOffset(slotLocal, timeZone);
+            if (slot > occurredAt)
+            {
+                return slot;
+            }
+            slotLocal = frequency switch
+            {
+                NotificationFrequency.Weekly => slotLocal.AddDays(7),
+                NotificationFrequency.Monthly => slotLocal.AddMonths(1),
+                _ => slotLocal.AddDays(1),
+            };
+        }
     }
 
     /// <summary>
-    /// Resolves a candidate local wall-clock time to a UTC offset, handling the two DST edge cases
-    /// TimeZoneInfo.GetUtcOffset resolves silently rather than erroring on: a "spring forward" gap
-    /// (candidateLocal never actually occurs) and a "fall back" overlap (candidateLocal occurs
-    /// twice, at two different offsets).
+    /// Resolves a candidate local wall-clock time to an instant, handling the two edge cases of an
+    /// offset change: a "spring forward" gap (candidateLocal never actually occurs) and a "fall
+    /// back" overlap (candidateLocal occurs twice, at two different offsets).
     /// </summary>
     private static DateTimeOffset ToLocalOffset(DateTime candidateLocal, TimeZoneInfo timeZone)
     {
-        if (timeZone.IsInvalidTime(candidateLocal))
+        // Round a time inside a gap forward to the first instant the wall clock actually reaches
+        // once the gap is over, rather than silently picking one side of it.
+        var probe = candidateLocal;
+        var occurrences = Occurrences(probe, timeZone);
+        while (occurrences.Count == 0)
         {
-            // Round forward to the first instant the wall clock actually reaches once daylight
-            // time starts, rather than silently picking one side of the gap.
-            var probe = candidateLocal;
-            while (timeZone.IsInvalidTime(probe))
-            {
-                probe = probe.AddMinutes(1);
-            }
-            return new DateTimeOffset(probe, timeZone.GetUtcOffset(probe));
+            probe = probe.AddMinutes(1);
+            occurrences = Occurrences(probe, timeZone);
         }
 
-        if (timeZone.IsAmbiguousTime(candidateLocal))
-        {
-            // Deterministically take the smaller (standard-time) offset so the result doesn't
-            // depend on which of the two occurrences .NET happens to default to.
-            var offset = timeZone.GetAmbiguousTimeOffsets(candidateLocal).Min();
-            return new DateTimeOffset(candidateLocal, offset);
-        }
-
-        return new DateTimeOffset(candidateLocal, timeZone.GetUtcOffset(candidateLocal));
+        // Deterministically take the later occurrence of a time inside an overlap (the smaller,
+        // usually standard-time, offset), so every slot is one well-defined instant.
+        return occurrences.Max();
     }
 
-    private static DateTime NextDailyOccurrence(DateTime referenceLocal, TimeOnly timeOfDay)
+    /// <summary>
+    /// The instants whose wall-clock time in timeZone is local: none inside a gap, two inside an
+    /// overlap. Worked out from instant-to-local offsets rather than TimeZoneInfo.IsInvalidTime/
+    /// IsAmbiguousTime, which miss offset changes .NET models as a change of base offset rather
+    /// than of daylight time (e.g. America/Ojinaga's spring forward in 2014, on Linux).
+    /// </summary>
+    private static List<DateTimeOffset> Occurrences(DateTime local, TimeZoneInfo timeZone)
     {
-        var candidate = referenceLocal.Date + timeOfDay.ToTimeSpan();
-        return candidate <= referenceLocal ? candidate.AddDays(1) : candidate;
+        // Every UTC offset is within a day of zero, so these two bracket every instant that could
+        // read as local - and the offsets in effect either side of any change in between.
+        var localAsUtc = new DateTimeOffset(local, TimeSpan.Zero);
+        return
+        [
+            .. new[] { localAsUtc.AddDays(-1), localAsUtc.AddDays(1) }
+                .Select(timeZone.GetUtcOffset)
+                .Distinct()
+                .Select(offset => new DateTimeOffset(local, offset))
+                .Where(instant => timeZone.GetUtcOffset(instant) == instant.Offset),
+        ];
     }
 
-    private static DateTime NextWeeklyOccurrence(
-        DateTime referenceLocal,
-        DayOfWeek targetDay,
-        TimeOnly timeOfDay
-    )
-    {
-        var candidate = referenceLocal.Date + timeOfDay.ToTimeSpan();
-        var daysUntilTarget = ((int)targetDay - (int)candidate.DayOfWeek + 7) % 7;
-        candidate = candidate.AddDays(daysUntilTarget);
-        return candidate <= referenceLocal ? candidate.AddDays(7) : candidate;
-    }
-
-    private static DateTime NextMonthlyOccurrence(DateTime referenceLocal)
-    {
-        var candidate =
-            new DateTime(referenceLocal.Year, referenceLocal.Month, 1)
-            + MonthlyDigestTime.ToTimeSpan();
-        return candidate <= referenceLocal ? candidate.AddMonths(1) : candidate;
-    }
+    private static DateTime FirstOnOrAfter(DateTime date, DayOfWeek dayOfWeek) =>
+        date.AddDays(((int)dayOfWeek - (int)date.DayOfWeek + 7) % 7);
 }
