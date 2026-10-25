@@ -47,4 +47,5 @@ jobs:
             query
             helm
             master
+            release
             ui
