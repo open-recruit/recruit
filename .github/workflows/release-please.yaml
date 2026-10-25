@@ -75,10 +75,10 @@ jobs:
           git config user.email "${bot_user_id}+${APP_SLUG}[bot]@users.noreply.github.com"
 
           git switch --force-create "${branch}"
-          git commit --all --message "chore: reset chart changelog after ${TAG_NAME}"
+          git commit --all --message "chore(release): reset chart changelog after ${TAG_NAME}"
           git push --force origin "${branch}"
 
-          title="chore: reset chart changelog after ${TAG_NAME}"
+          title="chore(release): reset chart changelog after ${TAG_NAME}"
           body="Resets the \`artifacthub.io/changes\` annotation in \`charts/recruit/Chart.yaml\` to only the image tag update entry, now that ${TAG_NAME} has been released. Add the next release's chart changes below it."
           if [ -n "${open_pr}" ]; then
             gh pr edit "${open_pr}" --title "${title}" --body "${body}"

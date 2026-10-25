@@ -6,6 +6,10 @@ on:
   push:
     branches:
       - master
+    # a Chart.yaml-only commit (e.g. the post-release changelog reset) was already tested in its PR
+    # and the merge queue, so it's not rebuilt again once it lands on master.
+    paths-ignore:
+      - charts/recruit/Chart.yaml
   release:
     types:
       # If you want a workflow to run when stable and pre-releases publish, subscribe to published instead of released and prereleased.
