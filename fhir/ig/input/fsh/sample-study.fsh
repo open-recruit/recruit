@@ -151,24 +151,37 @@ Usage: #inline
         EXISTS (
             SELECT 1
             FROM
-                fhir.default.condition AS sepsis,
-                UNNEST(sepsis.code.coding) AS u(sepsis_coding),
-                fhir.default.condition AS bronchitis,
-                UNNEST(bronchitis.code.coding) AS v(bronchitis_coding)
+                (
+                    SELECT
+                        sepsis.subject.reference AS subject_reference,
+                        CAST(COALESCE(sepsis.onsetdatetime, sepsis.recordeddate) AS TIMESTAMPTZ) AS onset
+                    FROM
+                        fhir.default.condition AS sepsis,
+                        UNNEST(sepsis.code.coding) AS u(sepsis_coding)
+                    WHERE
+                        sepsis_coding.system = 'http://snomed.info/sct'
+                        AND sepsis_coding.code IN ('91302008')
+                ) AS sepsis
+                JOIN (
+                    SELECT
+                        bronchitis.subject.reference AS subject_reference,
+                        CAST(COALESCE(bronchitis.onsetdatetime, bronchitis.recordeddate) AS TIMESTAMPTZ) AS onset
+                    FROM
+                        fhir.default.condition AS bronchitis,
+                        UNNEST(bronchitis.code.coding) AS v(bronchitis_coding)
+                    WHERE
+                        bronchitis_coding.system = 'http://snomed.info/sct'
+                        AND bronchitis_coding.code IN ('10509002')
+                ) AS bronchitis ON bronchitis.subject_reference = sepsis.subject_reference
             WHERE
-                sepsis.subject.reference = CONCAT('Patient/', patient.id)
-                AND sepsis_coding.system = 'http://snomed.info/sct'
-                AND sepsis_coding.code IN ('91302008')
-                AND bronchitis.subject.reference = sepsis.subject.reference
-                AND bronchitis_coding.system = 'http://snomed.info/sct'
-                AND bronchitis_coding.code IN ('10509002')
-                AND CAST(COALESCE(sepsis.onsetdatetime, sepsis.recordeddate) AS TIMESTAMPTZ)
-                    BETWEEN CAST(COALESCE(bronchitis.onsetdatetime, bronchitis.recordeddate) AS TIMESTAMPTZ) - INTERVAL 3 MONTH
-                        AND CAST(COALESCE(bronchitis.onsetdatetime, bronchitis.recordeddate) AS TIMESTAMPTZ) + INTERVAL 3 MONTH
+                sepsis.subject_reference = CONCAT('Patient/', patient.id)
+                AND sepsis.onset
+                    BETWEEN bronchitis.onset - INTERVAL 3 MONTH
+                        AND bronchitis.onset + INTERVAL 3 MONTH
         ) AS is_met
     FROM fhir.default.patient AS patient
     """
-* content[1].data = "U0VMRUNUCiAgICBwYXRpZW50LmlkIEFTIHBhdGllbnRfaWQsCiAgICBFWElTVFMgKAogICAgICAgIFNFTEVDVCAxCiAgICAgICAgRlJPTQogICAgICAgICAgICBmaGlyLmRlZmF1bHQuY29uZGl0aW9uIEFTIHNlcHNpcywKICAgICAgICAgICAgVU5ORVNUKHNlcHNpcy5jb2RlLmNvZGluZykgQVMgdShzZXBzaXNfY29kaW5nKSwKICAgICAgICAgICAgZmhpci5kZWZhdWx0LmNvbmRpdGlvbiBBUyBicm9uY2hpdGlzLAogICAgICAgICAgICBVTk5FU1QoYnJvbmNoaXRpcy5jb2RlLmNvZGluZykgQVMgdihicm9uY2hpdGlzX2NvZGluZykKICAgICAgICBXSEVSRQogICAgICAgICAgICBzZXBzaXMuc3ViamVjdC5yZWZlcmVuY2UgPSBDT05DQVQoJ1BhdGllbnQvJywgcGF0aWVudC5pZCkKICAgICAgICAgICAgQU5EIHNlcHNpc19jb2Rpbmcuc3lzdGVtID0gJ2h0dHA6Ly9zbm9tZWQuaW5mby9zY3QnCiAgICAgICAgICAgIEFORCBzZXBzaXNfY29kaW5nLmNvZGUgSU4gKCc5MTMwMjAwOCcpCiAgICAgICAgICAgIEFORCBicm9uY2hpdGlzLnN1YmplY3QucmVmZXJlbmNlID0gc2Vwc2lzLnN1YmplY3QucmVmZXJlbmNlCiAgICAgICAgICAgIEFORCBicm9uY2hpdGlzX2NvZGluZy5zeXN0ZW0gPSAnaHR0cDovL3Nub21lZC5pbmZvL3NjdCcKICAgICAgICAgICAgQU5EIGJyb25jaGl0aXNfY29kaW5nLmNvZGUgSU4gKCcxMDUwOTAwMicpCiAgICAgICAgICAgIEFORCBDQVNUKENPQUxFU0NFKHNlcHNpcy5vbnNldGRhdGV0aW1lLCBzZXBzaXMucmVjb3JkZWRkYXRlKSBBUyBUSU1FU1RBTVBUWikKICAgICAgICAgICAgICAgIEJFVFdFRU4gQ0FTVChDT0FMRVNDRShicm9uY2hpdGlzLm9uc2V0ZGF0ZXRpbWUsIGJyb25jaGl0aXMucmVjb3JkZWRkYXRlKSBBUyBUSU1FU1RBTVBUWikgLSBJTlRFUlZBTCAzIE1PTlRICiAgICAgICAgICAgICAgICAgICAgQU5EIENBU1QoQ09BTEVTQ0UoYnJvbmNoaXRpcy5vbnNldGRhdGV0aW1lLCBicm9uY2hpdGlzLnJlY29yZGVkZGF0ZSkgQVMgVElNRVNUQU1QVFopICsgSU5URVJWQUwgMyBNT05USAogICAgKSBBUyBpc19tZXQKRlJPTSBmaGlyLmRlZmF1bHQucGF0aWVudCBBUyBwYXRpZW50"
+* content[1].data = "U0VMRUNUCiAgICBwYXRpZW50LmlkIEFTIHBhdGllbnRfaWQsCiAgICBFWElTVFMgKAogICAgICAgIFNFTEVDVCAxCiAgICAgICAgRlJPTQogICAgICAgICAgICAoCiAgICAgICAgICAgICAgICBTRUxFQ1QKICAgICAgICAgICAgICAgICAgICBzZXBzaXMuc3ViamVjdC5yZWZlcmVuY2UgQVMgc3ViamVjdF9yZWZlcmVuY2UsCiAgICAgICAgICAgICAgICAgICAgQ0FTVChDT0FMRVNDRShzZXBzaXMub25zZXRkYXRldGltZSwgc2Vwc2lzLnJlY29yZGVkZGF0ZSkgQVMgVElNRVNUQU1QVFopIEFTIG9uc2V0CiAgICAgICAgICAgICAgICBGUk9NCiAgICAgICAgICAgICAgICAgICAgZmhpci5kZWZhdWx0LmNvbmRpdGlvbiBBUyBzZXBzaXMsCiAgICAgICAgICAgICAgICAgICAgVU5ORVNUKHNlcHNpcy5jb2RlLmNvZGluZykgQVMgdShzZXBzaXNfY29kaW5nKQogICAgICAgICAgICAgICAgV0hFUkUKICAgICAgICAgICAgICAgICAgICBzZXBzaXNfY29kaW5nLnN5c3RlbSA9ICdodHRwOi8vc25vbWVkLmluZm8vc2N0JwogICAgICAgICAgICAgICAgICAgIEFORCBzZXBzaXNfY29kaW5nLmNvZGUgSU4gKCc5MTMwMjAwOCcpCiAgICAgICAgICAgICkgQVMgc2Vwc2lzCiAgICAgICAgICAgIEpPSU4gKAogICAgICAgICAgICAgICAgU0VMRUNUCiAgICAgICAgICAgICAgICAgICAgYnJvbmNoaXRpcy5zdWJqZWN0LnJlZmVyZW5jZSBBUyBzdWJqZWN0X3JlZmVyZW5jZSwKICAgICAgICAgICAgICAgICAgICBDQVNUKENPQUxFU0NFKGJyb25jaGl0aXMub25zZXRkYXRldGltZSwgYnJvbmNoaXRpcy5yZWNvcmRlZGRhdGUpIEFTIFRJTUVTVEFNUFRaKSBBUyBvbnNldAogICAgICAgICAgICAgICAgRlJPTQogICAgICAgICAgICAgICAgICAgIGZoaXIuZGVmYXVsdC5jb25kaXRpb24gQVMgYnJvbmNoaXRpcywKICAgICAgICAgICAgICAgICAgICBVTk5FU1QoYnJvbmNoaXRpcy5jb2RlLmNvZGluZykgQVMgdihicm9uY2hpdGlzX2NvZGluZykKICAgICAgICAgICAgICAgIFdIRVJFCiAgICAgICAgICAgICAgICAgICAgYnJvbmNoaXRpc19jb2Rpbmcuc3lzdGVtID0gJ2h0dHA6Ly9zbm9tZWQuaW5mby9zY3QnCiAgICAgICAgICAgICAgICAgICAgQU5EIGJyb25jaGl0aXNfY29kaW5nLmNvZGUgSU4gKCcxMDUwOTAwMicpCiAgICAgICAgICAgICkgQVMgYnJvbmNoaXRpcyBPTiBicm9uY2hpdGlzLnN1YmplY3RfcmVmZXJlbmNlID0gc2Vwc2lzLnN1YmplY3RfcmVmZXJlbmNlCiAgICAgICAgV0hFUkUKICAgICAgICAgICAgc2Vwc2lzLnN1YmplY3RfcmVmZXJlbmNlID0gQ09OQ0FUKCdQYXRpZW50LycsIHBhdGllbnQuaWQpCiAgICAgICAgICAgIEFORCBzZXBzaXMub25zZXQKICAgICAgICAgICAgICAgIEJFVFdFRU4gYnJvbmNoaXRpcy5vbnNldCAtIElOVEVSVkFMIDMgTU9OVEgKICAgICAgICAgICAgICAgICAgICBBTkQgYnJvbmNoaXRpcy5vbnNldCArIElOVEVSVkFMIDMgTU9OVEgKICAgICkgQVMgaXNfbWV0CkZST00gZmhpci5kZWZhdWx0LnBhdGllbnQgQVMgcGF0aWVudA=="
 
 Instance: RecruitSampleStudyTransaction
 InstanceOf: Bundle
