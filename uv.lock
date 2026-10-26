@@ -13,11 +13,11 @@ wheels = [
 
 [[package]]
 name = "deepmerge"
-version = "3.0.1"
+version = "4.0.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/38/6e/5cb3548b4d3112fea529375e55e6f3cdc52b8054e3a66f203b1f888ba885/deepmerge-3.0.1.tar.gz", hash = "sha256:35b39a4cb92cf328d6eca61cbbf65f68a37c2ceb3085f0f853cbb2e52a59fc23", size = 22328, upload-time = "2026-09-01T14:09:44.383Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/ca/e9/5e99e56e03f9461858e686fdaf82e2516671bc1bd46f8b7ad7b9a8375f6f/deepmerge-4.0.0.tar.gz", hash = "sha256:948565f2bc9cdb41259a4a23d26638e5840c9e084a343ab279ffd3edcfdf74d3", size = 22792, upload-time = "2026-10-25T19:25:28.967Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/20/91/600003aaad107e27553fbc9cbfc57e96fa37e0223d2ef9d7d3a0e8d8d070/deepmerge-3.0.1-py3-none-any.whl", hash = "sha256:35c96f6a68fcf90719a5b31d9f8042ecef6c00fb56836660d33455d0f5cfda65", size = 14909, upload-time = "2026-09-01T14:09:43.364Z" },
+    { url = "https://files.pythonhosted.org/packages/c2/89/362146b2ec7d0d503f824ac8496c88f0408ee0d39203b02cc10feac08146/deepmerge-4.0.0-py3-none-any.whl", hash = "sha256:a36dd5810fc3b90bd3e0b681158221361d6a31a6109411b27b211b371fed6d5b", size = 15429, upload-time = "2026-10-25T19:25:28.012Z" },
 ]
 
 [[package]]
@@ -34,11 +34,11 @@ wheels = [
 
 [[package]]
 name = "markdown"
-version = "3.11.1"
+version = "3.11.2"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/4e/d4/f3f4b6ed70b7c7608fa026ff3bbe59ace9b1ebca43d8ae4886c87c95e81d/markdown-3.11.1.tar.gz", hash = "sha256:496f4f80f9ebd3395a04c8ec9595c40bbe8ec19e9c67d21fe071a1643e876606", size = 492927, upload-time = "2026-10-13T19:29:13.343Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/f4/32/0b4d0297064244f04af4331b65de16237cc3cce07474171ee14222a28981/markdown-3.11.2.tar.gz", hash = "sha256:87bf5d90f2d2882e2c02fcda182c2800456b985bff38913867c49706481514b0", size = 491445, upload-time = "2026-10-19T19:41:42.687Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/75/e6/1c7b7a48aa3f2c2a5d3c71a6c9c90a6c8c2903e5c73663b5f5e38f87257f/markdown-3.11.1-py3-none-any.whl", hash = "sha256:f1fa378ba5d682900c9ecb55ccceacca936016dda7c3b27097e8ae03ff78feb5", size = 116774, upload-time = "2026-10-13T19:29:12.066Z" },
+    { url = "https://files.pythonhosted.org/packages/fe/66/bcab3b677b71ad286b4e607e3427499537c76e13ad2e22584ba7a7d9882c/markdown-3.11.2-py3-none-any.whl", hash = "sha256:f80390747a2a0ff2ba54da074ce4f862f72a6685f608cd2637b646a6d83993f5", size = 114266, upload-time = "2026-10-19T19:41:41.244Z" },
 ]
 
 [[package]]
