@@ -33,42 +33,8 @@ defaults:
     shell: bash
 
 jobs:
-  # docs-only PRs and merge queue entries skip every job that builds, tests or installs the app -
-  # build-docs.yaml covers the docs themselves. Every other event always runs everything.
-  changes:
-    name: detect changes
-    runs-on: ubuntu-26.04
-    outputs:
-      docs-only: ${{ steps.diff.outputs.docs-only }}
-    steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
-        with:
-          persist-credentials: false
-
-      - name: Check whether only the docs changed
-        id: diff
-        if: ${{ github.event_name == 'pull_request' || github.event_name == 'merge_group' }}
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}
-        run: |
-          git fetch --no-tags --depth=1 origin "${BASE_SHA}"
-          # a plain tree diff, so it needs no history beyond the two commits.
-          changed="$(git diff --name-only "${BASE_SHA}" HEAD)"
-          echo "Changed files:"
-          echo "${changed}"
-          # the chart's README.md is generated from and linted with the chart, and the IG's pages are
-          # part of the FHIR resources, so Markdown files below charts/ and fhir/ aren't docs here.
-          non_docs="$(awk '!(/^(docs|overrides)\// || /^(zensical\.toml|pyproject\.toml|uv\.lock)$/ || (/\.md$/ && !/^(charts|fhir)\//))' <<< "${changed}")"
-          if [ -n "${changed}" ] && [ -z "${non_docs}" ]; then
-            echo "Only the docs changed, skipping the app's build and tests."
-            echo "docs-only=true" >> "${GITHUB_OUTPUT}"
-          fi
-
   build-list:
     name: build list
-    needs: changes
-    if: ${{ needs.changes.outputs.docs-only != 'true' }}
     permissions:
       contents: write
       pull-requests: write
@@ -89,8 +55,6 @@ jobs:
 
   build-query-sql-on-fhir:
     name: build query-sql-on-fhir
-    needs: changes
-    if: ${{ needs.changes.outputs.docs-only != 'true' }}
     permissions:
       contents: write
       pull-requests: write
@@ -114,8 +78,6 @@ jobs:
 
   build-superset-library-sync:
     name: build superset-library-sync
-    needs: changes
-    if: ${{ needs.changes.outputs.docs-only != 'true' }}
     permissions:
       contents: write
       pull-requests: write
@@ -137,17 +99,15 @@ jobs:
       build-args: |
         MODULE_NAME=superset-library-sync
 
-  # lints and installs the chart in a kind cluster, in parallel with compose-test: installing only
-  # needs the images, it's publishing them that has to wait for every test (see chart-publish).
   chart:
     name: chart
     needs:
       # for their image-version/image-digest outputs
       - build-list
       - build-query-sql-on-fhir
+      # deliberately not compose-test: installing the chart only needs the images, so it runs in
+      # parallel with compose-test instead of after it. The release job still waits for both.
     uses: miracum/.github/.github/workflows/standard-chart-publish.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
-    # the same as chart-publish's: a called workflow's jobs are validated against the caller's
-    # permissions even when they're skipped, like the publish job here.
     permissions:
       contents: read
       packages: write # to push the chart and its signature/attestation to ghcr.io
@@ -156,7 +116,16 @@ jobs:
       artifact-metadata: write # required by actions/attest-build-provenance
     with:
       chart-path: charts/recruit
-      enable-publish: false
+      # published as ghcr.io/<owner>/recruit/charts/recruit rather than the default
+      # ghcr.io/<owner>/recruit/recruit, matching the location the chart has always been published to.
+      registry: ghcr.io/${{ github.repository }}/charts
+      # stable per PR (no commit sha), so every push to the same PR overwrites this one OCI tag
+      # instead of piling up a new prerelease version per commit. Empty on every other event,
+      # which falls back to the workflow's own default: release events use the release tag,
+      # everything else uses Chart.yaml's version.
+      version: ${{ github.event_name == 'pull_request' && format('0.0.0-pr{0}', github.event.pull_request.number) || '' }}
+      # the image tag is the same for all modules, so it doesn't matter which build job we read it from.
+      app-version: ${{ github.event_name == 'pull_request' && needs.build-list.outputs.image-version || '' }}
       lint-config: .github/ct/ct.yaml
       install-config: .github/ct/install.yaml
       # this is the only place the chart is deployed to a cluster, so it must also run when only the
@@ -180,44 +149,6 @@ jobs:
             needs.build-query-sql-on-fhir.outputs.image-version, needs.build-query-sql-on-fhir.outputs.image-digest)
           || ''
         }}
-
-  # publishes the chart, but only once it installed and the images it points at have passed all
-  # tests (compose-test already depends on the container structure `test` job). A second call of the
-  # same workflow, which lints the chart again (well under a minute) before publishing it.
-  chart-publish:
-    name: chart publish
-    needs:
-      # for their image-version/image-digest outputs
-      - build-list
-      - build-query-sql-on-fhir
-      - chart
-      - compose-test
-    uses: miracum/.github/.github/workflows/standard-chart-publish.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
-    permissions:
-      contents: read
-      packages: write # to push the chart and its signature/attestation to ghcr.io
-      id-token: write # for keyless chart signing and OIDC-based attestations
-      attestations: write # to publish build provenance attestations
-      artifact-metadata: write # required by actions/attest-build-provenance
-    with:
-      chart-path: charts/recruit
-      # both already ran in the chart job.
-      enable-install: false
-      enable-docs-lint: false
-      # published as ghcr.io/<owner>/recruit/charts/recruit rather than the default
-      # ghcr.io/<owner>/recruit/recruit, matching the location the chart has always been published to.
-      registry: ghcr.io/${{ github.repository }}/charts
-      # stable per PR (no commit sha), so every push to the same PR overwrites this one OCI tag
-      # instead of piling up a new prerelease version per commit. Empty on every other event,
-      # which falls back to the workflow's own default: release events use the release tag,
-      # everything else uses Chart.yaml's version.
-      version: ${{ github.event_name == 'pull_request' && format('0.0.0-pr{0}', github.event.pull_request.number) || '' }}
-      # the image tag is the same for all modules, so it doesn't matter which build job we read it from.
-      app-version: ${{ github.event_name == 'pull_request' && needs.build-list.outputs.image-version || '' }}
-      lint-config: .github/ct/ct.yaml
-      extra-helm-repos: |
-        hapifhir=https://hapifhir.github.io/hapi-fhir-jpaserver-starter
-        maildev=https://maildev.github.io/helm/
       # pins every app image in the published chart to the exact digest its build job produced. On PRs
       # the tag is also replaced with the PR's image tag, so the PR chart deploys the PR's images; on
       # releases the release-please managed tag in values.yaml is kept, i.e. `v1.2.3@sha256:...`.
@@ -287,8 +218,6 @@ jobs:
   # Testcontainers, so they only need Docker, which the runner already has.
   test-list:
     name: test list
-    needs: changes
-    if: ${{ needs.changes.outputs.docs-only != 'true' }}
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -332,9 +261,7 @@ jobs:
     name: required checks
     if: ${{ always() }}
     needs:
-      - changes
       - chart
-      - chart-publish
       - compose-test
       - test-list
     runs-on: ubuntu-26.04
@@ -342,15 +269,9 @@ jobs:
       - name: Fail unless all required jobs succeeded
         env:
           RESULTS: ${{ join(needs.*.result, ' ') }}
-          DOCS_ONLY: ${{ needs.changes.outputs.docs-only }}
         run: |
           echo "Results of the required jobs: ${RESULTS}"
           for result in ${RESULTS}; do
-            # a docs-only change skips them on purpose. Otherwise a skipped job means one it
-            # depends on failed or was skipped itself, so it fails here too.
-            if [ "${result}" = "skipped" ] && [ "${DOCS_ONLY}" = "true" ]; then
-              continue
-            fi
             if [ "${result}" != "success" ]; then
               exit 1
             fi
@@ -372,13 +293,13 @@ jobs:
       # compose-test) so their per-module image-digest outputs are addressable here.
       - build-query-sql-on-fhir
       - build-list
-      - chart-publish
+      - chart
     uses: $/.github/workflows/release.yaml
     with:
       list-image-digest: ${{ needs.build-list.outputs.image-digest }}
       query-sql-on-fhir-image-digest: ${{ needs.build-query-sql-on-fhir.outputs.image-digest }}
-      chart-name: ${{ needs.chart-publish.outputs.chart-name }}
-      chart-version: ${{ needs.chart-publish.outputs.chart-version }}
+      chart-name: ${{ needs.chart.outputs.chart-name }}
+      chart-version: ${{ needs.chart.outputs.chart-version }}
     secrets:
       token: ${{ secrets.GITHUB_TOKEN }}
 
