@@ -57,7 +57,7 @@ spec:
             - |
               until [ "$(curl -s -o /dev/null -L -w '%{http_code}' "$FHIR_SERVER_BASE_URL/metadata")" == "200" ]; do
                 echo "$(date): Waiting for FHIR server @ $FHIR_SERVER_BASE_URL to be up";
-                sleep 15;
+                sleep 5;
               done;
         {{- if $syntheticPatients }}
         # the same patients the synthetic patients Job loads into the FHIR server, as NDJSON files in /data/fhir/ to

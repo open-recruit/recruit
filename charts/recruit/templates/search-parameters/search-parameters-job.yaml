@@ -56,7 +56,7 @@ spec:
             - |
               until [ "$(curl -s -o /dev/null -L -w '%{http_code}' "$FHIR_SERVER_BASE_URL/metadata")" == "200" ]; do
                 echo "$(date): Waiting for FHIR server to be up";
-                sleep 15;
+                sleep 5;
               done;
       containers:
         - name: search-parameters

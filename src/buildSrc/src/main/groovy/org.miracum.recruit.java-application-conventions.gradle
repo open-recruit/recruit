@@ -15,8 +15,6 @@ plugins {
 
     id 'com.diffplug.spotless'
 
-    id 'io.freefair.lombok'
-
     id 'de.undercouch.download'
 
     id 'checkstyle'
