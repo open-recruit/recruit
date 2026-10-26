@@ -1,3 +1,10 @@
+# the only values file `ct install` installs in CI: each additional one costs several minutes,
+# so new settings worth testing go here instead of into a new file.
+
+# the probe delays and polling intervals below are much shorter than the defaults, which leave
+# plenty of headroom for slow production clusters. In kind, every component is up within seconds,
+# so the defaults only add up to minutes of waiting between the components' startups.
+
 podAnnotations:
   linkerd.io/inject: "enabled"
 
@@ -31,13 +38,28 @@ list:
   extraEnv:
     - name: LOG_LEVEL
       value: "debug"
+  migrationJob:
+    waitPollIntervalSeconds: 2
+  startupProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 2
+    failureThreshold: 150
+
 postgres:
   enabled: true
   service:
     annotations:
       config.linkerd.io/opaque-ports: "5432"
+  startupProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 2
+    failureThreshold: 150
+  readinessProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 2
 
 fhirserver:
+  resourcesPreset: "none"
   replicaCount: 1
   topologySpreadConstraints:
     - maxSkew: 1
@@ -60,6 +82,13 @@ fhirserver:
     service:
       annotations:
         config.linkerd.io/opaque-ports: "5432"
+    startupProbe:
+      initialDelaySeconds: 0
+      periodSeconds: 2
+      failureThreshold: 150
+    readinessProbe:
+      initialDelaySeconds: 0
+      periodSeconds: 2
   podAnnotations:
     linkerd.io/inject: "enabled"
   metrics:
@@ -67,6 +96,13 @@ fhirserver:
       enabled: false
       additionalLabels:
         release: kube-prom-stack
+  startupProbe:
+    initialDelaySeconds: 10
+    periodSeconds: 3
+    failureThreshold: 100
+  readinessProbe:
+    initialDelaySeconds: 0
+    periodSeconds: 5
 
 maildev:
   podAnnotations:

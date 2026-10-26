@@ -1,9 +1,0 @@
-fhirserver:
-  resourcesPreset: "none"
-  postgres:
-    auth:
-      # kics-scan ignore-line
-      password: fhir
-
-postgres:
-  enabled: true
