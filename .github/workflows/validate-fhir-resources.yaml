@@ -37,11 +37,17 @@ jobs:
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /root/.fhir/packages
-          key: fhir-packages-${{ hashFiles('fhir/package.json') }}
+          # not fhir-packages-, so build-docs.yaml's restore-keys prefix never falls back to these.
+          key: firely-packages-${{ hashFiles('fhir/package.json') }}
 
       - name: Restore FHIR package dependencies
         working-directory: fhir/
         run: |
+          # by default, Firely Terminal regenerates the snapshots of every StructureDefinition it
+          # installs and writes them back into the package. sushi then builds the snapshots in
+          # fsh-generated on top of those instead of the published ones, so they no longer match
+          # what `npx fsh-sushi` generates locally.
+          fhir config inflate off
           fhir restore
 
       - name: Validate generated FHIR resources
@@ -58,14 +64,15 @@ jobs:
             fhir/ig/fsh-generated/resources/Bundle-recruit-sample-study-transaction.json
 
       - name: Check fsh-generated resources are up-to-date with the FSH source
-        continue-on-error: true
         run: |
           # clean rebuild: a stale committed file left over from a since-renamed FSH
           # instance wouldn't otherwise show up as a diff, since sushi doesn't delete output
           # for resources it no longer generates.
           rm -rf fhir/ig/fsh-generated
           sushi --snapshot fhir/ig
-          if git diff --exit-code -- fhir/ig/fsh-generated; then
+          # whitespace-only differences don't matter, e.g. sushi writes some files without the
+          # final newline that editors add on save.
+          if git diff --exit-code --ignore-all-space -- fhir/ig/fsh-generated; then
             echo -e "\033[0;32mfsh-generated resources are up to date\033[0m ✔"
           else
             echo -e "\033[0;31mfsh-generated resources are outdated! Please run \`npx fsh-sushi --snapshot fhir/ig\` locally and push the changes.\033[0m ❌"
