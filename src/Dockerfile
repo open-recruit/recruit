@@ -5,7 +5,9 @@ WORKDIR /home/gradle/project
 COPY . .
 
 ARG MODULE_NAME=query-sql-on-fhir
-RUN --mount=type=cache,target=/home/gradle/.gradle/caches/modules-2 <<EOF
+# all of caches/, not just the downloaded dependencies in caches/modules-2: the build cache and the
+# instrumented plugin jars live there too, and would otherwise be rebuilt by every build.
+RUN --mount=type=cache,target=/home/gradle/.gradle/caches <<EOF
 gradle clean ":${MODULE_NAME}:build" -x test --info
 java -Djarmode=tools -jar ${MODULE_NAME}/build/libs/*.jar extract --layers --launcher --force \
     --destination "${MODULE_NAME}/"
@@ -13,7 +15,7 @@ EOF
 
 FROM build AS test
 ENV TZ="UTC"
-RUN --mount=type=cache,target=/home/gradle/.gradle/caches/modules-2 <<EOF
+RUN --mount=type=cache,target=/home/gradle/.gradle/caches <<EOF
 gradle ":${MODULE_NAME}:test"
 gradle ":${MODULE_NAME}:jacocoTestReport"
 EOF
