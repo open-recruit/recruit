@@ -76,7 +76,7 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
-    uses: miracum/.github/.github/workflows/standard-build.yaml@d9d87af182ffe0ef4958e61dd1e697c7fd83c52f # v1.31.2
+    uses: miracum/.github/.github/workflows/standard-build.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
     with:
       image: ghcr.io/${{ github.repository }}/list
       build-context: "src/list/"
@@ -98,7 +98,7 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
-    uses: miracum/.github/.github/workflows/standard-build.yaml@d9d87af182ffe0ef4958e61dd1e697c7fd83c52f # v1.31.2
+    uses: miracum/.github/.github/workflows/standard-build.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
     with:
       image: ghcr.io/${{ github.repository }}/query-sql-on-fhir
       build-context: "src/"
@@ -123,7 +123,7 @@ jobs:
       id-token: write
       attestations: write
       artifact-metadata: write
-    uses: miracum/.github/.github/workflows/standard-build.yaml@d9d87af182ffe0ef4958e61dd1e697c7fd83c52f # v1.31.2
+    uses: miracum/.github/.github/workflows/standard-build.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
     with:
       image: ghcr.io/${{ github.repository }}/superset-library-sync
       build-context: "src/"
@@ -145,7 +145,7 @@ jobs:
       # for their image-version/image-digest outputs
       - build-list
       - build-query-sql-on-fhir
-    uses: miracum/.github/.github/workflows/standard-chart-publish.yaml@d9d87af182ffe0ef4958e61dd1e697c7fd83c52f # v1.31.2
+    uses: miracum/.github/.github/workflows/standard-chart-publish.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
     # the same as chart-publish's: a called workflow's jobs are validated against the caller's
     # permissions even when they're skipped, like the publish job here.
     permissions:
@@ -192,7 +192,7 @@ jobs:
       - build-query-sql-on-fhir
       - chart
       - compose-test
-    uses: miracum/.github/.github/workflows/standard-chart-publish.yaml@d9d87af182ffe0ef4958e61dd1e697c7fd83c52f # v1.31.2
+    uses: miracum/.github/.github/workflows/standard-chart-publish.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
     permissions:
       contents: read
       packages: write # to push the chart and its signature/attestation to ghcr.io
@@ -383,7 +383,7 @@ jobs:
       token: ${{ secrets.GITHUB_TOKEN }}
 
   lint:
-    uses: miracum/.github/.github/workflows/standard-lint.yaml@d9d87af182ffe0ef4958e61dd1e697c7fd83c52f # v1.31.2
+    uses: miracum/.github/.github/workflows/standard-lint.yaml@0ffa751fc19cb815b941cc6988a4efb1653dca2c # v1.32.0
     permissions:
       contents: read
       pull-requests: write # for MegaLinter's PR comment with lint results
