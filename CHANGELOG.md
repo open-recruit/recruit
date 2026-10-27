@@ -1,5 +1,22 @@
 # Changelog
 
+## [11.0.2](https://github.com/open-recruit/recruit/compare/v11.0.1...v11.0.2) (2026-10-27)
+
+
+### Documentation
+
+* updated k8s prod docs ([#684](https://github.com/open-recruit/recruit/issues/684)) ([b828e7d](https://github.com/open-recruit/recruit/commit/b828e7d4e3323b203e67ba7aa0894ad4ac5ef829))
+
+
+### Miscellaneous Chores
+
+* **deps:** update gcr.io/distroless/java25-debian13:nonroot docker digest to 5d31772 ([#683](https://github.com/open-recruit/recruit/issues/683)) ([5e2f67a](https://github.com/open-recruit/recruit/commit/5e2f67a7138521d6e202c0224d84b842c52aa4fa))
+
+
+### CI/CD
+
+* speed up pipeline ([#686](https://github.com/open-recruit/recruit/issues/686)) ([8597b96](https://github.com/open-recruit/recruit/commit/8597b9680f0c51612e17dd277d345d0a1d61a2fd))
+
 ## [11.0.1](https://github.com/open-recruit/recruit/compare/v11.0.0...v11.0.1) (2026-10-25)
 
 

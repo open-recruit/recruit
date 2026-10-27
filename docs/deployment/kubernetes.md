@@ -64,7 +64,7 @@ Then install the chart:
 
 ```sh
 helm upgrade --install -n recruit \
-  --version 11.0.1 \
+  --version 11.0.2 \
   -f values-recruit-production.yaml \
   --wait \
   recruit oci://ghcr.io/open-recruit/recruit/charts/recruit
@@ -178,8 +178,8 @@ explained in the [Quickstart](../getting-started/installation.md):
 ```sh
 helm upgrade --install -n recruit \
   --render-subchart-notes \
-  --version 11.0.1 \
-  -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.1/charts/recruit/values-demo.yaml \
+  --version 11.0.2 \
+  -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.2/charts/recruit/values-demo.yaml \
   -f values-kind-recruit.yaml \
   --wait \
   --timeout 30m \
@@ -237,8 +237,8 @@ You can now update your release by combining the values from above with the foll
 
 ```sh
 helm upgrade -n recruit \
-  --version 11.0.1 \
-  -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.1/charts/recruit/values-demo.yaml \
+  --version 11.0.2 \
+  -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.2/charts/recruit/values-demo.yaml \
   -f values-kind-recruit.yaml \
   -f values-kind-recruit-enable-servicemonitors.yaml \
   --wait \
