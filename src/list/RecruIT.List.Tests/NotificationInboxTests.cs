@@ -154,6 +154,35 @@ public sealed class NotificationInboxTests
     }
 
     [Fact]
+    public async Task Inbox_state_refresh_publishes_the_current_unread_count()
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var (service, factory) = await CreateServiceAsync();
+        using var _ = factory;
+        var subscription = Guid.NewGuid();
+        var deliveries = new List<Guid>();
+        for (var i = 0; i < 2; i++)
+        {
+            var eventId = await SeedEventAsync(factory, TrialA);
+            deliveries.Add(
+                await SeedDeliveriesAsync(factory, eventId, subscription, AliceSub, AliceEmail)
+            );
+        }
+
+        var inbox = new NotificationInboxState(service);
+        var notifications = 0;
+        inbox.Changed += () => notifications++;
+
+        await inbox.RefreshAsync(Alice, ct);
+        Assert.Equal(2, inbox.UnreadCount);
+
+        await service.MarkReadAsync([deliveries[0]], Alice, ct);
+        await inbox.RefreshAsync(Alice, ct);
+        Assert.Equal(1, inbox.UnreadCount);
+        Assert.Equal(2, notifications);
+    }
+
+    [Fact]
     public async Task Read_state_changes_never_touch_another_users_deliveries()
     {
         var ct = TestContext.Current.CancellationToken;
