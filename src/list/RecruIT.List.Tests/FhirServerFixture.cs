@@ -74,9 +74,13 @@ public sealed class FhirServerFixture : IAsyncLifetime
     public async ValueTask DisposeAsync() => await _hapi.DisposeAsync();
 
     /// <summary>What the services under test get - the app's own factory, pointed at this server.</summary>
-    public FhirClientFactory CreateClientFactory() =>
+    /// <param name="handler">
+    /// Sits between the service and the server, e.g. to make something happen in between two of a
+    /// service's requests. Created anew for every client.
+    /// </param>
+    public FhirClientFactory CreateClientFactory(Func<DelegatingHandler>? handler = null) =>
         new(
-            new PlainHttpClientFactory(),
+            new PlainHttpClientFactory(handler),
             Microsoft.Extensions.Options.Options.Create(new FhirServerOptions { BaseUrl = BaseUrl })
         );
 
@@ -120,8 +124,19 @@ public sealed class FhirServerFixture : IAsyncLifetime
         }
     }
 
-    private sealed class PlainHttpClientFactory : IHttpClientFactory
+    private sealed class PlainHttpClientFactory(Func<DelegatingHandler>? handler)
+        : IHttpClientFactory
     {
-        public HttpClient CreateClient(string name) => new();
+        public HttpClient CreateClient(string name)
+        {
+            if (handler is null)
+            {
+                return new HttpClient();
+            }
+
+            var delegating = handler();
+            delegating.InnerHandler = new HttpClientHandler();
+            return new HttpClient(delegating);
+        }
     }
 }
