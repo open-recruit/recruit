@@ -53,7 +53,9 @@ public sealed class OidcEvents(
             : "role";
         var existingRoles = identity.FindAll(roleClaimType).Select(c => c.Value).ToHashSet();
 
-        foreach (var groupClaim in identity.FindAll(groupClaimType))
+        // Materialized first: FindAll enumerates the identity's live claim list, which AddClaim
+        // below changes.
+        foreach (var groupClaim in identity.FindAll(groupClaimType).ToList())
         {
             if (mappings.TryGetValue(groupClaim.Value, out var role) && existingRoles.Add(role))
             {
