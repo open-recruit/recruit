@@ -91,10 +91,10 @@ either Compose or Helm.
     helm upgrade --install -n recruit \
       --create-namespace \
       --render-subchart-notes \
-      --version 11.0.2 \
+      --version 11.1.0 \
       --wait \
       --timeout 30m \
-      -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.0.2/charts/recruit/values-demo.yaml \
+      -f https://raw.githubusercontent.com/open-recruit/recruit/refs/tags/v11.1.0/charts/recruit/values-demo.yaml \
       recruit-demo \
       oci://ghcr.io/open-recruit/recruit/charts/recruit
     ```
