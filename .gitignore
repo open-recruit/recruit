@@ -457,3 +457,6 @@ fhirpkg.lock.json
 charts/**/.helm_ls_cache
 
 !**/wwwroot/lib/
+
+# desloppify local scan state
+.desloppify/
