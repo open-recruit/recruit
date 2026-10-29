@@ -154,7 +154,12 @@ public sealed class NotificationTestService(
                 return;
             }
             catch (FhirOperationException ex)
-                when (IsVersionConflict(ex) && attempt < MaxRestoreAttempts) { }
+                when (IsVersionConflict(ex) && attempt < MaxRestoreAttempts)
+            {
+                // the List changed since this attempt's read - retry against a fresh one; the last
+                // attempt's conflict propagates instead.
+                continue;
+            }
         }
     }
 
