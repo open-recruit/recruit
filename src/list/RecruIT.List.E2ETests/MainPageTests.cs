@@ -20,4 +20,15 @@ public sealed class MainPageTests(AppFixture app) : PageTest
         await Expect(Page.GetByText("recruIT", new PageGetByTextOptions { Exact = true }))
             .ToBeVisibleAsync();
     }
+
+    [Fact]
+    public async Task MainPage_shows_the_admin_nav_to_an_admin()
+    {
+        await Page.GotoAsync(app.BaseUrl);
+
+        // Auth:Enabled=false signs every visitor in as an admin (DevBypassAuthenticationHandler),
+        // so the sidebar group gated by the "Admin" policy must be there.
+        await Expect(Page.GetByText("Administration", new PageGetByTextOptions { Exact = true }))
+            .ToBeVisibleAsync();
+    }
 }

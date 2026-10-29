@@ -22,10 +22,10 @@ public sealed class TrialAccessService(
     ILogger<TrialAccessService> logger
 )
 {
-    /// <summary>Set once at startup from Auth:AdminRole config (see Program.cs).</summary>
-    public static string AdminRole { get; set; } = "admin";
+    /// <summary>Set once at startup from Auth:AdminRoles config (see Program.cs).</summary>
+    public static IReadOnlyList<string> AdminRoles { get; set; } = ["admin"];
 
-    public static bool IsAdmin(ClaimsPrincipal user) => user.IsInRole(AdminRole);
+    public static bool IsAdmin(ClaimsPrincipal user) => AdminRoles.Any(user.IsInRole);
 
     /// <summary>
     /// The permission level to use as a fallback for admins - they outrank TrialAdmin without

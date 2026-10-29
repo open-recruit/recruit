@@ -29,7 +29,7 @@ public sealed class DevBypassAuthenticationHandler(
                 new Claim("sub", "dev-admin"),
                 new Claim("preferred_username", "dev-admin"),
                 new Claim("email", "dev-admin@localhost"),
-                new Claim("role", TrialAccessService.AdminRole),
+                .. TrialAccessService.AdminRoles.Select(role => new Claim("role", role)),
             ],
             authenticationType: SchemeName,
             nameType: "preferred_username",
