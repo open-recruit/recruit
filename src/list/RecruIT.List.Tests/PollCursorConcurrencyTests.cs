@@ -2,7 +2,6 @@ using Microsoft.EntityFrameworkCore;
 using RecruIT.List.Data;
 using RecruIT.List.Data.Entities;
 using RecruIT.List.Services.Notify;
-using Testcontainers.PostgreSql;
 
 namespace RecruIT.List.Tests;
 
@@ -15,20 +14,15 @@ namespace RecruIT.List.Tests;
 /// which SQLite (used for the other, non-Postgres-specific tests in this project) doesn't
 /// faithfully reproduce.
 /// </summary>
-public sealed class PollCursorConcurrencyTests : IAsyncLifetime
+[Collection(PostgresCollection.Name)]
+public sealed class PollCursorConcurrencyTests(PostgresFixture postgres) : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(
-        "docker.io/library/postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
-    ).Build();
+    private IDbContextFactory<AppDbContext> _db = null!;
 
-    public async ValueTask InitializeAsync()
-    {
-        await _postgres.StartAsync();
-        await using var db = CreateContext();
-        await db.Database.MigrateAsync();
-    }
+    public async ValueTask InitializeAsync() =>
+        _db = await postgres.CreateDatabaseAsync(TestContext.Current.CancellationToken);
 
-    public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task TryAdvance_OnlyOneReplicaWinsConcurrentRace()
@@ -142,12 +136,5 @@ public sealed class PollCursorConcurrencyTests : IAsyncLifetime
         }
     }
 
-    private AppDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString(), npgsql => npgsql.MapAppDbEnums())
-            .UseSnakeCaseNamingConvention()
-            .Options;
-        return new AppDbContext(options);
-    }
+    private AppDbContext CreateContext() => _db.CreateDbContext();
 }

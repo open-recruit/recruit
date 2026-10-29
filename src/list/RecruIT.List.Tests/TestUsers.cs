@@ -1,4 +1,6 @@
 using System.Security.Claims;
+using Microsoft.EntityFrameworkCore;
+using RecruIT.List.Data;
 using RecruIT.List.Data.Entities;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Access;
@@ -52,7 +54,7 @@ internal static class TestUsers
     }
 
     public static async Task SeedGrantAsync(
-        SqliteDbContextFactory factory,
+        IDbContextFactory<AppDbContext> factory,
         TrialIdentifier trial,
         string email,
         TrialPermissionLevel level,
