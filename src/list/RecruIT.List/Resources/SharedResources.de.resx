@@ -129,9 +129,6 @@
   <data name="App.Common.GenderUnknown" xml:space="preserve">
     <value>Geschlecht unbekannt</value>
   </data>
-  <data name="App.Common.Close" xml:space="preserve">
-    <value>Schließen</value>
-  </data>
   <data name="App.Common.Saved" xml:space="preserve">
     <value>Gespeichert</value>
   </data>
@@ -167,12 +164,6 @@
   </data>
   <data name="App.Nav.SignIn" xml:space="preserve">
     <value>Anmelden</value>
-  </data>
-  <data name="App.Language.English" xml:space="preserve">
-    <value>Englisch</value>
-  </data>
-  <data name="App.Language.German" xml:space="preserve">
-    <value>Deutsch</value>
   </data>
   <data name="App.ErrorBoundary.Title" xml:space="preserve">
     <value>Es ist ein Fehler aufgetreten</value>
@@ -231,9 +222,6 @@
   <data name="App.PatientList.LoadErrorFallback" xml:space="preserve">
     <value>Beim Laden der Studienvorschläge ist ein unerwarteter Fehler aufgetreten.</value>
   </data>
-  <data name="App.PatientList.LastUpdated" xml:space="preserve">
-    <value>Zuletzt aktualisiert am {0}</value>
-  </data>
   <data name="App.PatientList.EmptyTitle" xml:space="preserve">
     <value>Keine Vorschläge</value>
   </data>
@@ -290,45 +278,6 @@
   </data>
   <data name="App.PatientList.FunnelTotalPopulationLabel" xml:space="preserve">
     <value>Gesamt gescreent</value>
-  </data>
-  <data name="App.PatientDialog.TabClinicalSummary" xml:space="preserve">
-    <value>Klinische Zusammenfassung</value>
-  </data>
-  <data name="App.PatientDialog.TabConditions" xml:space="preserve">
-    <value>Diagnosen ({0})</value>
-  </data>
-  <data name="App.PatientDialog.TabProcedures" xml:space="preserve">
-    <value>Prozeduren ({0})</value>
-  </data>
-  <data name="App.PatientDialog.TabMedications" xml:space="preserve">
-    <value>Medikation ({0})</value>
-  </data>
-  <data name="App.PatientDialog.TabObservations" xml:space="preserve">
-    <value>Befunde ({0})</value>
-  </data>
-  <data name="App.PatientDialog.NoConditions" xml:space="preserve">
-    <value>Keine Diagnosen erfasst.</value>
-  </data>
-  <data name="App.PatientDialog.NoProcedures" xml:space="preserve">
-    <value>Keine Prozeduren erfasst.</value>
-  </data>
-  <data name="App.PatientDialog.NoMedications" xml:space="preserve">
-    <value>Keine Medikation erfasst.</value>
-  </data>
-  <data name="App.PatientDialog.NoObservations" xml:space="preserve">
-    <value>Keine Befunde erfasst.</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedCondition" xml:space="preserve">
-    <value>Nicht spezifizierte Diagnose</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedProcedure" xml:space="preserve">
-    <value>Nicht spezifizierte Prozedur</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedMedication" xml:space="preserve">
-    <value>Nicht spezifiziertes Medikament</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedObservation" xml:space="preserve">
-    <value>Nicht spezifizierter Befund</value>
   </data>
   <data name="App.PatientsPage.LoadErrorTitle" xml:space="preserve">
     <value>Patienten konnten nicht geladen werden</value>
@@ -519,8 +468,8 @@
   <data name="App.LoggedOut.Title" xml:space="preserve">
     <value>Abgemeldet</value>
   </data>
-  <data name="App.LoggedOut.Description" xml:space="preserve">
-    <value>Sie wurden erfolgreich abgemeldet.</value>
+  <data name="App.LoggedOut.BackToApp" xml:space="preserve">
+    <value>Zurück zur Anwendung</value>
   </data>
   <data name="App.Errors.TrialsLoadFailed" xml:space="preserve">
     <value>Die Liste der klinischen Studien konnte nicht vom FHIR-Server geladen werden.</value>
@@ -546,17 +495,11 @@
   <data name="App.Errors.PatientRecordNotFound" xml:space="preserve">
     <value>Der Datensatz dieses Patienten konnte nicht gefunden werden.</value>
   </data>
-  <data name="App.Errors.PatientRecordLoadForNoteFailed" xml:space="preserve">
-    <value>Der Datensatz dieses Patienten konnte zum Hinzufügen der Notiz nicht geladen werden.</value>
-  </data>
   <data name="App.Errors.PatientRecordLoadForStatusUpdateFailed" xml:space="preserve">
     <value>Der Datensatz dieses Patienten konnte zum Aktualisieren des Status nicht geladen werden.</value>
   </data>
   <data name="App.Errors.PatientRecordStatusConflict" xml:space="preserve">
     <value>Der Status dieses Patienten wurde zwischenzeitlich von jemand anderem geändert. Bitte laden Sie die Seite neu und versuchen Sie es erneut.</value>
-  </data>
-  <data name="App.Errors.PatientNotesLoadFailed" xml:space="preserve">
-    <value>Die Notizen dieses Patienten konnten nicht geladen werden.</value>
   </data>
   <data name="App.Errors.StatusHistoryLoadFailed" xml:space="preserve">
     <value>Der Statusverlauf dieses Patienten konnte nicht geladen werden.</value>
@@ -585,11 +528,11 @@
   <data name="App.Errors.CriteriaSubmitFailed" xml:space="preserve">
     <value>Die Ein- und Ausschlusskriterien konnten nicht an den FHIR-Server übermittelt werden.</value>
   </data>
+  <data name="App.Errors.CannotModifyOwnGrant" xml:space="preserve">
+    <value>Sie können Ihren eigenen Zugriff nicht ändern oder entziehen.</value>
+  </data>
   <data name="App.Errors.PatientRecordUpdateFailed" xml:space="preserve">
     <value>Der Datensatz des Patienten konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.</value>
-  </data>
-  <data name="App.Errors.ClinicalRecordLoadFailed" xml:space="preserve">
-    <value>Die klinische Akte des Patienten konnte nicht geladen werden.</value>
   </data>
   <data name="App.Gender.Male" xml:space="preserve">
     <value>m</value>
@@ -732,9 +675,6 @@
   <data name="App.TrialAccess.LoadErrorFallback" xml:space="preserve">
     <value>Die Zugriffsverwaltung für diese Studie konnte nicht geladen werden.</value>
   </data>
-  <data name="App.TrialAccess.TrialPickerLabel" xml:space="preserve">
-    <value>Studie wechseln</value>
-  </data>
   <data name="App.TrialAccess.AddGrantTitle" xml:space="preserve">
     <value>Zugriff gewähren</value>
   </data>
@@ -776,6 +716,9 @@
   </data>
   <data name="App.TrialAccess.RevokeButton" xml:space="preserve">
     <value>Zugriff entziehen</value>
+  </data>
+  <data name="App.TrialAccess.CannotModifyOwnGrantHint" xml:space="preserve">
+    <value>Sie können Ihren eigenen Zugriff nicht ändern oder entziehen. Wenden Sie sich an einen anderen Studien-Administrator oder einen Administrator.</value>
   </data>
   <data name="App.TrialAccess.EmptyTitle" xml:space="preserve">
     <value>Noch niemand hat Zugriff</value>
