@@ -1,6 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RecruIT.List.Data;
 using RecruIT.List.Data.Entities;
+using RecruIT.List.Services.Notify;
 using Testcontainers.PostgreSql;
 
 namespace RecruIT.List.Tests;
@@ -78,6 +79,55 @@ public sealed class PollCursorConcurrencyTests : IAsyncLifetime
         );
         Assert.Equal("2", finalCursor.LastSeenVersionId);
     }
+
+    [Fact]
+    public async Task ConcurrentBaseline_IsTheUniqueViolationTheDetectorIgnores()
+    {
+        const string listId = "concurrent-baseline-list";
+
+        // Two replicas both seeing the list for the first time, each inserting its baseline cursor.
+        await using var replicaA = CreateContext();
+        await using var replicaB = CreateContext();
+        replicaA.PollCursors.Add(NewCursor(listId));
+        replicaB.PollCursors.Add(NewCursor(listId));
+
+        await replicaA.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var ex = await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            replicaB.SaveChangesAsync(TestContext.Current.CancellationToken)
+        );
+
+        Assert.True(NotificationDetectorService.IsUniqueViolation(ex));
+    }
+
+    [Fact]
+    public async Task OtherDbUpdateFailures_AreNotMistakenForTheRace()
+    {
+        await using var db = CreateContext();
+        // A revision of a note that doesn't exist - a foreign key violation, not a unique one.
+        db.ScreeningNoteRevisions.Add(
+            new ScreeningNoteRevision
+            {
+                Id = Guid.NewGuid(),
+                ScreeningNoteId = Guid.NewGuid(),
+                Text = "orphaned revision",
+                WrittenAt = DateTimeOffset.UtcNow,
+            }
+        );
+
+        var ex = await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            db.SaveChangesAsync(TestContext.Current.CancellationToken)
+        );
+
+        Assert.False(NotificationDetectorService.IsUniqueViolation(ex));
+    }
+
+    private static PollCursor NewCursor(string listId) =>
+        new()
+        {
+            ListId = listId,
+            LastSeenVersionId = "1",
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
 
     private static async Task<bool> TryAdvance(Func<Task<int>> saveChanges)
     {

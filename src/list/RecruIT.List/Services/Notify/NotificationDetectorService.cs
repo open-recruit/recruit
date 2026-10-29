@@ -1,6 +1,7 @@
 using System.Diagnostics;
 using Hl7.Fhir.Model;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using RecruIT.List.Data;
 using RecruIT.List.Data.Entities;
 using RecruIT.List.Models;
@@ -121,9 +122,11 @@ public sealed class NotificationDetectorService(
             {
                 await db.SaveChangesAsync(ct);
             }
-            catch (DbUpdateException)
+            catch (DbUpdateException ex) when (IsUniqueViolation(ex))
             {
-                // another replica already bootstrapped it concurrently - fine, ignore.
+                // another replica already bootstrapped it concurrently - fine, ignore. Any other
+                // failure propagates to the caller, which logs it and retries next tick.
+                logger.LogDebug("List/{ListId} was already baselined by another replica", listId);
             }
             return;
         }
@@ -171,12 +174,29 @@ public sealed class NotificationDetectorService(
         {
             // another replica already claimed this version transition this tick - discard our
             // in-memory cursor/event/delivery changes and let them handle it.
+            logger.LogDebug(
+                "List/{ListId} version {VersionId} was already claimed by another replica",
+                listId,
+                currentVersionId
+            );
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException ex) when (IsUniqueViolation(ex))
         {
             // another replica already recorded these exact events (DedupeKey collision) - fine, skip.
+            logger.LogDebug(
+                "Notifications for List/{ListId} version {VersionId} were already recorded by another replica",
+                listId,
+                currentVersionId
+            );
         }
     }
+
+    /// <summary>
+    /// The PollCursor primary key or NotificationEvent.DedupeKey unique index rejecting a row
+    /// another replica inserted first - unlike other DbUpdateExceptions, an expected race.
+    /// </summary>
+    internal static bool IsUniqueViolation(DbUpdateException ex) =>
+        ex.InnerException is PostgresException { SqlState: PostgresErrorCodes.UniqueViolation };
 
     /// <summary>
     /// Every version from the cursor's (sinceVersionId, included) up to the current one
