@@ -1,5 +1,12 @@
 # Changelog
 
+## [11.1.0](https://github.com/open-recruit/recruit/compare/v11.0.2...v11.1.0) (2026-10-29)
+
+
+### Features
+
+* **list:** allow multiple admin roles via Auth:AdminRoles ([#687](https://github.com/open-recruit/recruit/issues/687)) ([8857b94](https://github.com/open-recruit/recruit/commit/8857b94fa10c6703f1fe7da2d12db43d209b55af))
+
 ## [11.0.2](https://github.com/open-recruit/recruit/compare/v11.0.1...v11.0.2) (2026-10-27)
 
 
