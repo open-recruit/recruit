@@ -18,8 +18,26 @@ public sealed class AuthOptions
     /// </summary>
     public bool Enabled { get; set; }
 
-    /// <summary>The OIDC role value that grants global admin privileges.</summary>
-    public string AdminRole { get; set; } = "admin";
+    /// <summary>The deprecated single-role predecessor of Auth:AdminRoles, see ReadAdminRoles.</summary>
+    public const string DeprecatedAdminRoleKey = $"{SectionName}:AdminRole";
+
+    /// <summary>
+    /// The OIDC role values that grant global admin privileges (holding any one of them is enough),
+    /// from the Auth:AdminRoles list. A still-set deprecated Auth:AdminRole is prepended as the first
+    /// entry, so upgrading doesn't change who is an admin. Null when neither is configured, meaning
+    /// TrialAccessService's "admin" default applies - which is also why appsettings.json doesn't
+    /// pre-fill AdminRoles: a deployment's AdminRole would end up next to that "admin", not instead.
+    /// </summary>
+    public static string[]? ReadAdminRoles(IConfiguration configuration)
+    {
+        var adminRoles = new[] { configuration[DeprecatedAdminRoleKey] }
+            .Concat(configuration.GetSection($"{SectionName}:AdminRoles").Get<string[]>() ?? [])
+            .OfType<string>()
+            .Where(role => !string.IsNullOrWhiteSpace(role))
+            .Distinct()
+            .ToArray();
+        return adminRoles is { Length: > 0 } ? adminRoles : null;
+    }
 
     /// <summary>
     /// The OpenIdConnectOptions bound as-is (Authority, ClientId, ClientSecret, ...), plus this

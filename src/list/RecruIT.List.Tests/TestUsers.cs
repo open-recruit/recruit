@@ -12,7 +12,8 @@ internal static class TestUsers
         string? sub = null,
         string? email = null,
         string? name = null,
-        bool isAdmin = false
+        bool isAdmin = false,
+        string? role = null
     )
     {
         var claims = new List<Claim>();
@@ -33,7 +34,12 @@ internal static class TestUsers
 
         if (isAdmin)
         {
-            claims.Add(new Claim("role", TrialAccessService.AdminRole));
+            claims.Add(new Claim("role", TrialAccessService.AdminRoles[0]));
+        }
+
+        if (role is not null)
+        {
+            claims.Add(new Claim("role", role));
         }
 
         var identity = new ClaimsIdentity(

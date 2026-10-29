@@ -5,7 +5,7 @@ using static RecruIT.List.Tests.TestUsers;
 
 namespace RecruIT.List.Tests;
 
-// TrialAccessService.AdminRole is a mutable static; keep tests that touch it out of xUnit's
+// TrialAccessService.AdminRoles is a mutable static; keep tests that touch it out of xUnit's
 // default cross-class parallelization.
 [CollectionDefinition(nameof(TrialAccessRoleCollection), DisableParallelization = true)]
 public sealed class TrialAccessRoleCollection;
@@ -26,31 +26,40 @@ public sealed class TrialAccessServiceTests
         new(factory, new FakeStringLocalizer(), NullLogger<TrialAccessService>.Instance);
 
     [Fact]
-    public async Task Configured_admin_role_is_used_for_admin_checks()
+    public async Task Any_configured_admin_role_is_used_for_admin_checks()
     {
-        // AdminRole is a static, set once at startup from config - not parallel-safe, hence try/finally.
-        var originalAdminRole = TrialAccessService.AdminRole;
+        // AdminRoles is a static, set once at startup from config - not parallel-safe, hence try/finally.
+        var originalAdminRoles = TrialAccessService.AdminRoles;
         try
         {
-            TrialAccessService.AdminRole = "recruit-admin";
+            TrialAccessService.AdminRoles = ["recruit-admin", "study-admin"];
 
             using var factory = new SqliteDbContextFactory();
             var service = CreateService(factory);
-            var admin = CreateUser(sub: "admin-1", isAdmin: true);
 
-            Assert.True(
-                await service.CanAccessTrialAsync(
-                    admin,
-                    TrialA,
-                    TestContext.Current.CancellationToken
-                )
-            );
-            Assert.True(service.CanPatchList(admin));
-            Assert.True(service.CanDelete(admin));
+            foreach (var role in TrialAccessService.AdminRoles)
+            {
+                var admin = CreateUser(sub: "admin-1", role: role);
+
+                Assert.True(
+                    await service.CanAccessTrialAsync(
+                        admin,
+                        TrialA,
+                        TestContext.Current.CancellationToken
+                    )
+                );
+                Assert.True(service.CanPatchList(admin));
+                Assert.True(service.CanDelete(admin));
+            }
+
+            // the configured roles replace the "admin" default rather than adding to it
+            var defaultRoleUser = CreateUser(sub: "user-1", role: "admin");
+            Assert.False(TrialAccessService.IsAdmin(defaultRoleUser));
+            Assert.False(service.CanDelete(defaultRoleUser));
         }
         finally
         {
-            TrialAccessService.AdminRole = originalAdminRole;
+            TrialAccessService.AdminRoles = originalAdminRoles;
         }
     }
 

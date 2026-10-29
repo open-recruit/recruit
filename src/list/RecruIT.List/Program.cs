@@ -112,9 +112,9 @@ var fhirBaseUrl =
 var authEnabled = builder.Configuration.GetValue<bool>("Auth:Enabled");
 
 // Read once at startup rather than threading IOptions<AuthOptions> through every call site.
-if (builder.Configuration["Auth:AdminRole"] is { Length: > 0 } adminRole)
+if (AuthOptions.ReadAdminRoles(builder.Configuration) is { } adminRoles)
 {
-    TrialAccessService.AdminRole = adminRole;
+    TrialAccessService.AdminRoles = adminRoles;
 }
 
 var appDbConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
@@ -217,7 +217,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore(options =>
 {
-    options.AddPolicy("Admin", policy => policy.RequireRole(TrialAccessService.AdminRole));
+    options.AddPolicy("Admin", policy => policy.RequireRole(TrialAccessService.AdminRoles));
 });
 
 if (!authEnabled)
@@ -305,6 +305,19 @@ builder.Services.AddScoped<NotificationSenderService>();
 builder.Services.AddScoped<NotificationTestService>();
 
 var app = builder.Build();
+
+// Logged only now since there's no logger before Build() - AuthOptions.ReadAdminRoles above has
+// already applied the deprecated setting as the first of the admin roles.
+if (
+    builder.Configuration[AuthOptions.DeprecatedAdminRoleKey] is { Length: > 0 } deprecatedAdminRole
+)
+{
+    app.Logger.LogWarning(
+        "Auth:AdminRole is deprecated and will be removed in a future release. It's treated as the first "
+            + "entry of Auth:AdminRoles for now - move it there, e.g. Auth__AdminRoles__0={AdminRole}.",
+        deprecatedAdminRole
+    );
+}
 
 var forwardedHeadersOptions = new ForwardedHeadersOptions
 {

@@ -47,7 +47,7 @@
                     </BbSidebarMenuItem>
                 </BbSidebarMenu>
             </BbSidebarGroup>
-            <AuthorizeView Roles="@TrialAccessService.AdminRole">
+            <AuthorizeView Policy="Admin">
                 <BbSidebarGroup>
                     <BbSidebarGroupLabel>@Localizer["App.Nav.GroupAdmin"]</BbSidebarGroupLabel>
                     <BbSidebarMenu>

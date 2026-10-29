@@ -64,8 +64,12 @@ The screening list stores user permissions, notification subscriptions and its j
 - `Auth__Enabled` (default `false`): whether users sign in via OpenID Connect. When `false`, anyone who can reach the
   screening list is treated as a signed-in admin and can see every study and patient. Always set it to `true` in
   production.
-- `Auth__AdminRole` (default `admin`): the role that can see every study and manage eligibility criteria and access
-  permissions. Users without it only see the studies they've been given access to.
+- `Auth__AdminRoles` (default `admin`): the roles that can see every study and manage eligibility criteria and access
+  permissions. Holding any one of them is enough. Set one variable per role, numbered from `0`, e.g.
+  `Auth__AdminRoles__0=admin` and `Auth__AdminRoles__1=recruit-admin`. Setting roles replaces the `admin` default.
+  Users with none of the roles only see the studies they've been given access to.
+- `Auth__AdminRole` (deprecated): the single-role predecessor of `Auth__AdminRoles`. It still works and is treated as
+  the first admin role, but the screening list logs a warning at startup. Move it to `Auth__AdminRoles__0` instead.
 - `Auth__Oidc__Authority`: issuer URL of the OpenID Connect provider, e.g. `https://auth.example.com/realms/recruit`.
 - `Auth__Oidc__ClientId`, `Auth__Oidc__ClientSecret`: the screening list's client credentials.
 - `Auth__Oidc__RoleClaimType` (default `role`): the claim holding the user's roles.
