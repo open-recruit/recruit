@@ -75,6 +75,12 @@ internal static class FhirBundleHelpers
     public static string GetStudyAcronym(this ResearchStudy study) =>
         study.GetMiiExStudieAkronym()?.Value is { Length: > 0 } acronym ? acronym : string.Empty;
 
+    /// <summary>The acronym, else the title, else the id - for naming a study in a list of them.</summary>
+    public static string GetStudyDisplayName(this ResearchStudy study) =>
+        study.GetStudyAcronym() is { Length: > 0 } acronym
+            ? acronym
+            : study.Title ?? study.Id ?? "?";
+
     /// <summary>Decodes a criterion Library's SQL source from its content attachment.</summary>
     public static string? GetSqlText(this Library library) =>
         library.Content?.FirstOrDefault()?.Data is { Length: > 0 } data

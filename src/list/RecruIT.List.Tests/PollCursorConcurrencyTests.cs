@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
 using RecruIT.List.Data;
 using RecruIT.List.Data.Entities;
-using Testcontainers.PostgreSql;
+using RecruIT.List.Services.Notify;
 
 namespace RecruIT.List.Tests;
 
@@ -14,20 +14,15 @@ namespace RecruIT.List.Tests;
 /// which SQLite (used for the other, non-Postgres-specific tests in this project) doesn't
 /// faithfully reproduce.
 /// </summary>
-public sealed class PollCursorConcurrencyTests : IAsyncLifetime
+[Collection(PostgresCollection.Name)]
+public sealed class PollCursorConcurrencyTests(PostgresFixture postgres) : IAsyncLifetime
 {
-    private readonly PostgreSqlContainer _postgres = new PostgreSqlBuilder(
-        "docker.io/library/postgres:18.4@sha256:a02db8cac496f15b094798a38254f14d6e00741f709360e5e00bb6668ea31636"
-    ).Build();
+    private IDbContextFactory<AppDbContext> _db = null!;
 
-    public async ValueTask InitializeAsync()
-    {
-        await _postgres.StartAsync();
-        await using var db = CreateContext();
-        await db.Database.MigrateAsync();
-    }
+    public async ValueTask InitializeAsync() =>
+        _db = await postgres.CreateDatabaseAsync(TestContext.Current.CancellationToken);
 
-    public async ValueTask DisposeAsync() => await _postgres.DisposeAsync();
+    public ValueTask DisposeAsync() => ValueTask.CompletedTask;
 
     [Fact]
     public async Task TryAdvance_OnlyOneReplicaWinsConcurrentRace()
@@ -79,6 +74,55 @@ public sealed class PollCursorConcurrencyTests : IAsyncLifetime
         Assert.Equal("2", finalCursor.LastSeenVersionId);
     }
 
+    [Fact]
+    public async Task ConcurrentBaseline_IsTheUniqueViolationTheDetectorIgnores()
+    {
+        const string listId = "concurrent-baseline-list";
+
+        // Two replicas both seeing the list for the first time, each inserting its baseline cursor.
+        await using var replicaA = CreateContext();
+        await using var replicaB = CreateContext();
+        replicaA.PollCursors.Add(NewCursor(listId));
+        replicaB.PollCursors.Add(NewCursor(listId));
+
+        await replicaA.SaveChangesAsync(TestContext.Current.CancellationToken);
+        var ex = await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            replicaB.SaveChangesAsync(TestContext.Current.CancellationToken)
+        );
+
+        Assert.True(NotificationDetectorService.IsUniqueViolation(ex));
+    }
+
+    [Fact]
+    public async Task OtherDbUpdateFailures_AreNotMistakenForTheRace()
+    {
+        await using var db = CreateContext();
+        // A revision of a note that doesn't exist - a foreign key violation, not a unique one.
+        db.ScreeningNoteRevisions.Add(
+            new ScreeningNoteRevision
+            {
+                Id = Guid.NewGuid(),
+                ScreeningNoteId = Guid.NewGuid(),
+                Text = "orphaned revision",
+                WrittenAt = DateTimeOffset.UtcNow,
+            }
+        );
+
+        var ex = await Assert.ThrowsAnyAsync<DbUpdateException>(() =>
+            db.SaveChangesAsync(TestContext.Current.CancellationToken)
+        );
+
+        Assert.False(NotificationDetectorService.IsUniqueViolation(ex));
+    }
+
+    private static PollCursor NewCursor(string listId) =>
+        new()
+        {
+            ListId = listId,
+            LastSeenVersionId = "1",
+            UpdatedAt = DateTimeOffset.UtcNow,
+        };
+
     private static async Task<bool> TryAdvance(Func<Task<int>> saveChanges)
     {
         try
@@ -92,12 +136,5 @@ public sealed class PollCursorConcurrencyTests : IAsyncLifetime
         }
     }
 
-    private AppDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseNpgsql(_postgres.GetConnectionString(), npgsql => npgsql.MapAppDbEnums())
-            .UseSnakeCaseNamingConvention()
-            .Options;
-        return new AppDbContext(options);
-    }
+    private AppDbContext CreateContext() => _db.CreateDbContext();
 }

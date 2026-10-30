@@ -22,4 +22,13 @@
   <ItemGroup>
     <ProjectReference Include="..\RecruIT.List\RecruIT.List.csproj" />
   </ItemGroup>
+
+  <!-- The SearchParameters the chart and compose load, for FhirServerFixture's HAPI server. -->
+  <ItemGroup>
+    <None
+      Include="..\..\..\charts\recruit\files\fhir\search-parameters-transaction-upsert.json"
+      Link="fhir\search-parameters-transaction-upsert.json"
+      CopyToOutputDirectory="PreserveNewest"
+    />
+  </ItemGroup>
 </Project>

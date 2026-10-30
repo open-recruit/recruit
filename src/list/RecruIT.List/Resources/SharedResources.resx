@@ -70,9 +70,6 @@
   <data name="App.Common.GenderUnknown" xml:space="preserve">
     <value>gender unknown</value>
   </data>
-  <data name="App.Common.Close" xml:space="preserve">
-    <value>Close</value>
-  </data>
   <data name="App.Common.Saved" xml:space="preserve">
     <value>Saved</value>
   </data>
@@ -108,12 +105,6 @@
   </data>
   <data name="App.Nav.SignIn" xml:space="preserve">
     <value>Sign in</value>
-  </data>
-  <data name="App.Language.English" xml:space="preserve">
-    <value>English</value>
-  </data>
-  <data name="App.Language.German" xml:space="preserve">
-    <value>German</value>
   </data>
   <data name="App.ErrorBoundary.Title" xml:space="preserve">
     <value>Something went wrong</value>
@@ -172,9 +163,6 @@
   <data name="App.PatientList.LoadErrorFallback" xml:space="preserve">
     <value>An unexpected error occurred while loading this trial's recommendations.</value>
   </data>
-  <data name="App.PatientList.LastUpdated" xml:space="preserve">
-    <value>Last updated {0}</value>
-  </data>
   <data name="App.PatientList.EmptyTitle" xml:space="preserve">
     <value>No recommendations</value>
   </data>
@@ -231,45 +219,6 @@
   </data>
   <data name="App.PatientList.FunnelTotalPopulationLabel" xml:space="preserve">
     <value>Total screened</value>
-  </data>
-  <data name="App.PatientDialog.TabClinicalSummary" xml:space="preserve">
-    <value>Clinical summary</value>
-  </data>
-  <data name="App.PatientDialog.TabConditions" xml:space="preserve">
-    <value>Conditions ({0})</value>
-  </data>
-  <data name="App.PatientDialog.TabProcedures" xml:space="preserve">
-    <value>Procedures ({0})</value>
-  </data>
-  <data name="App.PatientDialog.TabMedications" xml:space="preserve">
-    <value>Medications ({0})</value>
-  </data>
-  <data name="App.PatientDialog.TabObservations" xml:space="preserve">
-    <value>Observations ({0})</value>
-  </data>
-  <data name="App.PatientDialog.NoConditions" xml:space="preserve">
-    <value>No conditions recorded.</value>
-  </data>
-  <data name="App.PatientDialog.NoProcedures" xml:space="preserve">
-    <value>No procedures recorded.</value>
-  </data>
-  <data name="App.PatientDialog.NoMedications" xml:space="preserve">
-    <value>No medications recorded.</value>
-  </data>
-  <data name="App.PatientDialog.NoObservations" xml:space="preserve">
-    <value>No observations recorded.</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedCondition" xml:space="preserve">
-    <value>Unspecified condition</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedProcedure" xml:space="preserve">
-    <value>Unspecified procedure</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedMedication" xml:space="preserve">
-    <value>Unspecified medication</value>
-  </data>
-  <data name="App.PatientDialog.UnspecifiedObservation" xml:space="preserve">
-    <value>Unspecified observation</value>
   </data>
   <data name="App.PatientsPage.LoadErrorTitle" xml:space="preserve">
     <value>Could not load patients</value>
@@ -487,17 +436,11 @@
   <data name="App.Errors.PatientRecordNotFound" xml:space="preserve">
     <value>This patient's record could not be found.</value>
   </data>
-  <data name="App.Errors.PatientRecordLoadForNoteFailed" xml:space="preserve">
-    <value>This patient's record could not be loaded to add the note.</value>
-  </data>
   <data name="App.Errors.PatientRecordLoadForStatusUpdateFailed" xml:space="preserve">
     <value>This patient's record could not be loaded to update the status.</value>
   </data>
   <data name="App.Errors.PatientRecordStatusConflict" xml:space="preserve">
     <value>This patient's status was changed by someone else in the meantime. Please reload and try again.</value>
-  </data>
-  <data name="App.Errors.PatientNotesLoadFailed" xml:space="preserve">
-    <value>This patient's notes could not be loaded.</value>
   </data>
   <data name="App.Errors.StatusHistoryLoadFailed" xml:space="preserve">
     <value>The status history for this patient could not be loaded.</value>
@@ -531,9 +474,6 @@
   </data>
   <data name="App.Errors.PatientRecordUpdateFailed" xml:space="preserve">
     <value>The patient's record could not be updated. Please try again.</value>
-  </data>
-  <data name="App.Errors.ClinicalRecordLoadFailed" xml:space="preserve">
-    <value>The patient's clinical record could not be loaded.</value>
   </data>
   <data name="App.Gender.Male" xml:space="preserve">
     <value>m</value>
