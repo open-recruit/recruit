@@ -285,7 +285,8 @@ list:
         name: ""
         # -- key inside the existing secret
         key: "oidc-client-secret"
-      # -- the claim type used to map roles from the ID token, e.g. `role` or `realm_access.roles`
+      # -- the top-level ID token claim holding the user's roles. A path into a nested claim, such as
+      # `realm_access.roles`, matches nothing
       roleClaimType: "role"
 
   notifications:

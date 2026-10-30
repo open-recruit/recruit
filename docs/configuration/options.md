@@ -72,14 +72,33 @@ The screening list stores user permissions, notification subscriptions and its j
   the first admin role, but the screening list logs a warning at startup. Move it to `Auth__AdminRoles__0` instead.
 - `Auth__Oidc__Authority`: issuer URL of the OpenID Connect provider, e.g. `https://auth.example.com/realms/recruit`.
 - `Auth__Oidc__ClientId`, `Auth__Oidc__ClientSecret`: the screening list's client credentials.
-- `Auth__Oidc__RoleClaimType` (default `role`): the claim holding the user's roles.
+- `Auth__Oidc__RoleClaimType` (default `role`): the ID token claim holding the user's roles. It must be a top-level
+  claim: a path into a nested claim, such as `realm_access.roles` or `resource_access.recruit.roles`, matches nothing.
+  Don't point it at a claim that holds the groups or roles of every app your identity provider serves, such as
+  `groups`: an `admin` there may belong to a different app, and would make its holder an admin here as well.
 - `Auth__Oidc__GroupClaimType` (default `groups`) and `Auth__Oidc__GroupRoleMappings`: grant a role to the members
   of an identity provider group. `GroupRoleMappings` maps group names to roles, e.g.
-  `{ "/recruit-admins": "admin" }` in the `Auth:Oidc` section of the app's configuration.
+  `{ "/recruit-admins": "admin" }` in the `Auth:Oidc` section of the app's configuration. Only map groups that are
+  specific to the screening list, not a name other apps use too, such as a bare `admin`.
 
 Register the screening list as a confidential client with the OpenID Connect provider, with the redirect URI
 `https://<screening list host>/signin-oidc`. The screening list requests the `openid`, `profile`, `email` and
 `offline_access` scopes.
+
+#### Keycloak
+
+Keycloak sends a client's own roles in the nested `resource_access.<client ID>.roles` claim, and by default only in
+the access token, so the screening list can't read them. Add a mapper that also puts them in a top-level claim of the
+ID token: in the screening list's client, open **Client scopes** → **`<client ID>-dedicated`** → **Add mapper** →
+**By configuration** → **User Client Role** and set
+
+- **Client ID**: the screening list's client
+- **Token Claim Name**: `role`, or whatever `Auth__Oidc__RoleClaimType` is set to
+- **Multivalued** and **Add to ID token**: on
+
+Then create the roles from `Auth__AdminRoles` as roles of that client and assign them to your admins. To check the
+result, pick a user under the client's **Client scopes** → **Evaluate** and open **Generated ID token**: it should
+contain e.g. `"role": ["admin"]`, holding only the screening list's own roles.
 
 ### Notifications
 
