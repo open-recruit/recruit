@@ -63,6 +63,29 @@ public sealed class TrialAccessServiceTests
     }
 
     [Fact]
+    public async Task A_grant_given_to_an_email_only_applies_to_a_user_whose_email_is_verified()
+    {
+        using var factory = new SqliteDbContextFactory();
+        var service = CreateService(factory);
+        await SeedGrantAsync(factory, TrialA, "jane@example.com", TrialPermissionLevel.TrialAdmin);
+        var ct = TestContext.Current.CancellationToken;
+
+        var impostor = CreateUser(sub: "impostor", email: "jane@example.com", emailVerified: false);
+        var jane = CreateUser(sub: "jane-sub", email: "jane@example.com");
+
+        Assert.False(await service.CanAccessTrialAsync(impostor, TrialA, ct));
+        Assert.Null(await service.GetPermissionAsync(impostor, TrialA, ct));
+        var accessible = await service.GetAccessibleTrialIdentifiersAsync(impostor, ct);
+        Assert.NotNull(accessible);
+        Assert.Empty(accessible);
+        Assert.True(await service.CanAccessTrialAsync(jane, TrialA, ct));
+        Assert.Equal(
+            TrialPermissionLevel.TrialAdmin,
+            await service.GetPermissionAsync(jane, TrialA, ct)
+        );
+    }
+
+    [Fact]
     public async Task Admin_bypasses_all_per_trial_checks_without_any_grant()
     {
         using var factory = new SqliteDbContextFactory();

@@ -4,6 +4,7 @@ using RecruIT.List.Data;
 using RecruIT.List.Data.Entities;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Access;
+using RecruIT.List.Services.Auth;
 
 namespace RecruIT.List.Tests;
 
@@ -15,7 +16,8 @@ internal static class TestUsers
         string? email = null,
         string? name = null,
         bool isAdmin = false,
-        string? role = null
+        string? role = null,
+        bool emailVerified = true
     )
     {
         var claims = new List<Claim>();
@@ -27,6 +29,10 @@ internal static class TestUsers
         if (email is not null)
         {
             claims.Add(new Claim("email", email));
+            if (emailVerified)
+            {
+                claims.Add(new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true"));
+            }
         }
 
         if (name is not null)

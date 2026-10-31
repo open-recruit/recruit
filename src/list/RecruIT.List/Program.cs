@@ -3,6 +3,7 @@ using System.Security.Claims;
 using BlazorBlueprint.Components;
 using Hangfire;
 using Hangfire.PostgreSql;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.DataProtection;
@@ -253,6 +254,9 @@ else
             options.SaveTokens = true;
             options.MapInboundClaims = false;
             options.GetClaimsFromUserInfoEndpoint = true;
+            // Not among the claims ASP.NET Core maps from the userinfo response by default; the
+            // ID token usually carries it, but an IdP may only put it in the userinfo response.
+            options.ClaimActions.MapUniqueJsonKey("email_verified", "email_verified");
             // Only relax to plain-HTTP metadata/issuer for local development (e.g. a local Keycloak
             // without TLS) - production authorities must always be HTTPS.
             options.RequireHttpsMetadata = !builder.Environment.IsDevelopment();

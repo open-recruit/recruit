@@ -70,6 +70,13 @@ The screening list stores user permissions, notification subscriptions and its j
   Users with none of the roles only see the studies they've been given access to.
 - `Auth__AdminRole` (deprecated): the single-role predecessor of `Auth__AdminRoles`. It still works and is treated as
   the first admin role, but the screening list logs a warning at startup. Move it to `Auth__AdminRoles__0` instead.
+- `Auth__RequireVerifiedEmail` (default `true`): study access that was given to an email address, before that person
+  had ever signed in, only applies once the identity provider reports the address as verified (the `email_verified`
+  claim). Without this, anyone who can register at the identity provider with someone else's address would get that
+  person's access. A user whose address isn't verified can still use access given to them by their account, and
+  can't subscribe to email notifications. Set it to `false` only for an identity provider that doesn't send
+  `email_verified` and doesn't let users choose unverified addresses. It takes effect at the next sign-in, so
+  people already signed in lose email-based access until they sign in again.
 - `Auth__Oidc__Authority`: issuer URL of the OpenID Connect provider, e.g. `https://auth.example.com/realms/recruit`.
 - `Auth__Oidc__ClientId`, `Auth__Oidc__ClientSecret`: the screening list's client credentials.
 - `Auth__Oidc__RoleClaimType` (default `role`): the ID token claim holding the user's roles. It must be a top-level

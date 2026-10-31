@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authentication.OpenIdConnect;
 using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Logging.Abstractions;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Auth;
 using static RecruIT.List.Tests.TestUsers;
@@ -25,6 +26,13 @@ public sealed class OidcEventsTests
             )
             .Build();
 
+    private static IConfiguration RequireVerifiedEmail(bool required) =>
+        new ConfigurationBuilder()
+            .AddInMemoryCollection([
+                KeyValuePair.Create("Auth:RequireVerifiedEmail", (string?)required.ToString()),
+            ])
+            .Build();
+
     private static ClaimsPrincipal SignedIn(string roleClaimType, params Claim[] claims) =>
         new(new ClaimsIdentity(claims, "oidc", "preferred_username", roleClaimType));
 
@@ -41,7 +49,11 @@ public sealed class OidcEventsTests
             principal,
             new AuthenticationProperties()
         );
-        await new OidcEvents(configuration, factory).TokenValidated(context);
+        await new OidcEvents(
+            configuration,
+            factory,
+            NullLogger<OidcEvents>.Instance
+        ).TokenValidated(context);
     }
 
     [Fact]
@@ -116,6 +128,7 @@ public sealed class OidcEventsTests
                 "role",
                 new Claim("sub", "jane-sub"),
                 new Claim("email", "jane@example.com"),
+                new Claim("email_verified", "true"),
                 new Claim("name", "Jane Doe")
             )
         );
@@ -144,7 +157,12 @@ public sealed class OidcEventsTests
         await SignInAsync(
             Configuration(),
             factory,
-            SignedIn("role", new Claim("sub", "new-sub"), new Claim("email", "jane@example.com"))
+            SignedIn(
+                "role",
+                new Claim("sub", "new-sub"),
+                new Claim("email", "jane@example.com"),
+                new Claim("email_verified", "true")
+            )
         );
 
         await using var db = factory.CreateDbContext();
@@ -154,5 +172,96 @@ public sealed class OidcEventsTests
                 await db.TrialAccessGrants.SingleAsync(TestContext.Current.CancellationToken)
             ).SubjectId
         );
+    }
+
+    [Theory]
+    [InlineData("false")]
+    [InlineData(null)]
+    public async Task An_unverified_email_does_not_claim_grants_given_to_that_address(
+        string? emailVerified
+    )
+    {
+        using var factory = new SqliteDbContextFactory();
+        await SeedGrantAsync(factory, Trial, "victim@example.com", TrialPermissionLevel.TrialAdmin);
+        var attacker = SignedIn(
+            "role",
+            [
+                new Claim("sub", "attacker-sub"),
+                new Claim("email", "victim@example.com"),
+                .. emailVerified is null
+                    ? []
+                    : new[] { new Claim("email_verified", emailVerified) },
+            ]
+        );
+
+        await SignInAsync(Configuration(), factory, attacker);
+
+        await using var db = factory.CreateDbContext();
+        Assert.Null(
+            (
+                await db.TrialAccessGrants.SingleAsync(TestContext.Current.CancellationToken)
+            ).SubjectId
+        );
+        Assert.Null(attacker.GetVerifiedEmail());
+        Assert.Equal(("attacker-sub", null), attacker.GetUserKeys());
+    }
+
+    [Theory]
+    [InlineData("true")]
+    [InlineData("True")]
+    public async Task A_verified_email_is_trusted_however_the_idp_spells_true(string emailVerified)
+    {
+        using var factory = new SqliteDbContextFactory();
+        var user = SignedIn(
+            "role",
+            new Claim("sub", "jane-sub"),
+            new Claim("email", "jane@example.com"),
+            new Claim("email_verified", emailVerified)
+        );
+
+        await SignInAsync(Configuration(), factory, user);
+
+        Assert.Equal("jane@example.com", user.GetVerifiedEmail());
+    }
+
+    [Fact]
+    public async Task A_deployment_may_accept_unverified_emails_for_an_idp_without_the_claim()
+    {
+        using var factory = new SqliteDbContextFactory();
+        await SeedGrantAsync(factory, Trial, "jane@example.com", TrialPermissionLevel.Viewer);
+        var user = SignedIn(
+            "role",
+            new Claim("sub", "jane-sub"),
+            new Claim("email", "jane@example.com")
+        );
+
+        await SignInAsync(RequireVerifiedEmail(false), factory, user);
+
+        Assert.Equal("jane@example.com", user.GetVerifiedEmail());
+        await using var db = factory.CreateDbContext();
+        Assert.Equal(
+            "jane-sub",
+            (
+                await db.TrialAccessGrants.SingleAsync(TestContext.Current.CancellationToken)
+            ).SubjectId
+        );
+    }
+
+    [Fact]
+    public async Task A_trust_claim_arriving_in_the_token_is_not_believed()
+    {
+        using var factory = new SqliteDbContextFactory();
+        var user = SignedIn(
+            "role",
+            new Claim("sub", "attacker-sub"),
+            new Claim("email", "victim@example.com"),
+            new Claim("email_verified", "false"),
+            new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true")
+        );
+
+        await SignInAsync(Configuration(), factory, user);
+
+        Assert.Null(user.GetVerifiedEmail());
+        Assert.Empty(user.FindAll(ClaimsPrincipalExtensions.EmailTrustedClaimType));
     }
 }

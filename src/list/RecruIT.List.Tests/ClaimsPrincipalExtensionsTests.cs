@@ -24,7 +24,8 @@ public sealed class ClaimsPrincipalExtensionsTests
             new Claim("email", "jane@example.com"),
             new Claim(ClaimTypes.Email, "other@example.com"),
             new Claim("name", "Jane Doe"),
-            new Claim("preferred_username", "jdoe")
+            new Claim("preferred_username", "jdoe"),
+            new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true")
         );
 
         Assert.Equal(("oidc-sub", "jane@example.com"), user.GetUserKeys());
@@ -37,7 +38,8 @@ public sealed class ClaimsPrincipalExtensionsTests
         var user = User(
             new Claim(ClaimTypes.NameIdentifier, "standard-sub"),
             new Claim(ClaimTypes.Email, "jane@example.com"),
-            new Claim(ClaimTypes.Name, "Jane Doe")
+            new Claim(ClaimTypes.Name, "Jane Doe"),
+            new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true")
         );
 
         Assert.Equal(("standard-sub", "jane@example.com"), user.GetUserKeys());
@@ -55,5 +57,27 @@ public sealed class ClaimsPrincipalExtensionsTests
 
         Assert.Equal((null, null), anonymous.GetUserKeys());
         Assert.Null(anonymous.GetDisplayName());
+    }
+
+    [Fact]
+    public void An_email_the_sign_in_did_not_vouch_for_is_not_a_user_key()
+    {
+        var user = User(new Claim("sub", "jane-sub"), new Claim("email", "jane@example.com"));
+
+        Assert.Equal("jane@example.com", user.GetEmail());
+        Assert.Null(user.GetVerifiedEmail());
+        Assert.Equal(("jane-sub", null), user.GetUserKeys());
+    }
+
+    [Fact]
+    public void A_vouched_for_email_is_a_user_key()
+    {
+        var user = User(
+            new Claim("sub", "jane-sub"),
+            new Claim("email", "jane@example.com"),
+            new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true")
+        );
+
+        Assert.Equal(("jane-sub", "jane@example.com"), user.GetUserKeys());
     }
 }
