@@ -291,7 +291,7 @@ else
     {
         try
         {
-            _libraries = [.. await CriteriaService.SearchLibrariesAsync()];
+            _libraries = [.. await CriteriaService.SearchLibrariesAsync(_user)];
         }
         catch (Exception ex)
         {
@@ -338,7 +338,7 @@ else
         _studyCriteriaLoading = true;
         try
         {
-            var criteria = await CriteriaService.GetStudyCriteriaAsync(studyId);
+            var criteria = await CriteriaService.GetStudyCriteriaAsync(studyId, _user);
             _studyCriteria.AddRange(criteria);
             _criteria.InsertRange(0, criteria);
         }
@@ -370,7 +370,7 @@ else
         _submitting = true;
         try
         {
-            await CriteriaService.SubmitAsync(_studyDraft, _criteria);
+            await CriteriaService.SubmitAsync(_studyDraft, _criteria, _user);
             Toast.Success(Localizer["App.CriteriaManager.SubmitSuccessMessage"], Localizer["App.Common.Saved"]);
         }
         catch (Exception ex)

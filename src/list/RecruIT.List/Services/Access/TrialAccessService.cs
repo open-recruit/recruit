@@ -153,9 +153,6 @@ public sealed class TrialAccessService(
     /// <summary>Only admins may retire/reactivate a List (matches list-old's createPatchFilter).</summary>
     public bool CanPatchList(ClaimsPrincipal user) => IsAdmin(user);
 
-    /// <summary>Only admins may DELETE resources (matches list-old's createDeleteFilter).</summary>
-    public bool CanDelete(ClaimsPrincipal user) => IsAdmin(user);
-
     /// <summary>
     /// Whether this grant belongs to the given user - used to stop a TrialAdmin from editing or
     /// revoking their own grant and accidentally locking themselves out of managing this trial.

@@ -1,8 +1,10 @@
+using System.Security.Claims;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Localization;
 using RecruIT.List.Models;
 using RecruIT.List.Resources;
+using RecruIT.List.Services.Access;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Services.Fhir;
@@ -11,7 +13,8 @@ namespace RecruIT.List.Services.Fhir;
 /// Backs the admin-only Criteria Manager page: lets an admin browse existing ResearchStudy and
 /// Library resources, and preview and submit the transaction Bundle (see
 /// EligibilityCriteriaBundleBuilder) a study's eligibility criteria consist of against the FHIR
-/// server.
+/// server. Every method that reads or writes the FHIR server takes the user and refuses a
+/// non-admin itself, rather than relying on the page hiding its controls.
 /// </summary>
 public sealed class EligibilityCriteriaService(
     FhirClientFactory clientFactory,
@@ -39,9 +42,11 @@ public sealed class EligibilityCriteriaService(
     /// support (chained search) to stay cheap at a much larger resource count.
     /// </summary>
     public async Task<IReadOnlyList<LibrarySummaryDto>> SearchLibrariesAsync(
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         List<Resource> libraries;
         List<Resource> groups;
         List<Resource> studies;
@@ -127,9 +132,11 @@ public sealed class EligibilityCriteriaService(
     /// the ":contains" string-search modifier a server-side title search would otherwise need.
     /// </summary>
     public async Task<IReadOnlyList<ResearchStudySummaryDto>> GetResearchStudiesAsync(
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         if (_cachedResearchStudySummaries is { } cached)
         {
             return cached;
@@ -184,9 +191,11 @@ public sealed class EligibilityCriteriaService(
     /// </summary>
     public async Task<IReadOnlyList<CriterionDraft>> GetStudyCriteriaAsync(
         string studyId,
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         List<Resource> resources;
         try
         {
@@ -280,9 +289,11 @@ public sealed class EligibilityCriteriaService(
     public async Task SubmitAsync(
         ResearchStudyDraft studyDraft,
         IReadOnlyList<CriterionDraft> criteria,
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         var bundle = BuildBundle(studyDraft, criteria);
         var client = clientFactory.CreateClient();
 
@@ -294,6 +305,14 @@ public sealed class EligibilityCriteriaService(
         {
             logger.LogError(ex, "Failed to submit eligibility criteria transaction bundle");
             throw new FhirAccessException(localizer["App.Errors.CriteriaSubmitFailed"], ex);
+        }
+    }
+
+    private void EnsureAdmin(ClaimsPrincipal user)
+    {
+        if (!TrialAccessService.IsAdmin(user))
+        {
+            throw new UnauthorizedAccessException(localizer["App.Errors.NotAuthorizedAdminOnly"]);
         }
     }
 

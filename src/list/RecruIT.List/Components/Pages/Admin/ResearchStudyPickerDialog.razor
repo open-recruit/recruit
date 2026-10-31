@@ -60,6 +60,9 @@
     [CascadingParameter]
     public IDialogReference DialogReference { get; set; } = default!;
 
+    [CascadingParameter]
+    private Task<AuthenticationState>? AuthStateTask { get; set; }
+
     private List<ResearchStudySummaryDto> _results = [];
     private string _filter = string.Empty;
     private bool _initialLoading = true;
@@ -77,7 +80,7 @@
     {
         try
         {
-            _results = [.. await CriteriaService.GetResearchStudiesAsync()];
+            _results = [.. await CriteriaService.GetResearchStudiesAsync(await AuthStateTask.GetUserAsync())];
         }
         catch (Exception ex)
         {

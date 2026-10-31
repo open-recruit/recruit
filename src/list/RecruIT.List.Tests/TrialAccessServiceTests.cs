@@ -49,13 +49,12 @@ public sealed class TrialAccessServiceTests
                     )
                 );
                 Assert.True(service.CanPatchList(admin));
-                Assert.True(service.CanDelete(admin));
             }
 
             // the configured roles replace the "admin" default rather than adding to it
             var defaultRoleUser = CreateUser(sub: "user-1", role: "admin");
             Assert.False(TrialAccessService.IsAdmin(defaultRoleUser));
-            Assert.False(service.CanDelete(defaultRoleUser));
+            Assert.False(service.CanPatchList(defaultRoleUser));
         }
         finally
         {

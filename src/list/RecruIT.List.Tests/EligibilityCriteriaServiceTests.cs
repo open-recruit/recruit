@@ -1,7 +1,9 @@
+using System.Security.Claims;
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Fhir;
+using static RecruIT.List.Tests.TestUsers;
 using FhirList = Hl7.Fhir.Model.List;
 using Task = System.Threading.Tasks.Task;
 
@@ -12,6 +14,8 @@ namespace RecruIT.List.Tests;
 public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
 {
     private readonly FhirTestData _data = new(fhir.CreateClient());
+
+    private static readonly ClaimsPrincipal Admin = CreateUser(sub: "admin-sub", isAdmin: true);
 
     private EligibilityCriteriaService CreateService() =>
         new(
@@ -55,9 +59,9 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         authored.Exclude = true;
         var ct = TestContext.Current.CancellationToken;
 
-        await service.SubmitAsync(draft, [authored], ct);
+        await service.SubmitAsync(draft, [authored], Admin, ct);
         var loaded = Assert.Single(
-            await service.GetStudyCriteriaAsync(StudyIdOf(service, draft), ct)
+            await service.GetStudyCriteriaAsync(StudyIdOf(service, draft), Admin, ct)
         );
 
         Assert.Equal(authored.DisplayText, loaded.DisplayText);
@@ -72,10 +76,10 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         var service = CreateService();
         var criterion = NewCriterion("Adults", "SELECT patient_id FROM adults");
         var ct = TestContext.Current.CancellationToken;
-        await service.SubmitAsync(NewStudyDraft(), [criterion], ct);
+        await service.SubmitAsync(NewStudyDraft(), [criterion], Admin, ct);
 
         var library = Assert.Single(
-            await service.SearchLibrariesAsync(ct),
+            await service.SearchLibrariesAsync(Admin, ct),
             l => l.Title == criterion.DisplayText
         );
 
@@ -93,7 +97,7 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         var draft = NewStudyDraft(createEmptyScreeningList: true);
         var ct = TestContext.Current.CancellationToken;
 
-        await service.SubmitAsync(draft, [NewCriterion("Adults", "SELECT 1")], ct);
+        await service.SubmitAsync(draft, [NewCriterion("Adults", "SELECT 1")], Admin, ct);
 
         var studyId = StudyIdOf(service, draft);
         var lists = await FhirBundleHelpers.GetAllPagesAsync(
@@ -122,7 +126,7 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         var ct = TestContext.Current.CancellationToken;
 
         var summary = Assert.Single(
-            await service.GetResearchStudiesAsync(ct),
+            await service.GetResearchStudiesAsync(Admin, ct),
             s => s.Id == existing.Id
         );
         Assert.Equal(("EXISTING", existing.Title), (summary.Acronym, summary.Title));
@@ -130,6 +134,7 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         await service.SubmitAsync(
             new ResearchStudyDraft { Title = "ignored", ExistingStudyId = existing.Id },
             [criterion],
+            Admin,
             ct
         );
 
@@ -141,7 +146,9 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         Assert.NotEqual($"Group/{oldGroup.Id}", enrollment.Reference);
         Assert.Equal(
             [criterion.DisplayText],
-            (await service.GetStudyCriteriaAsync(existing.Id!, ct)).Select(c => c.DisplayText)
+            (await service.GetStudyCriteriaAsync(existing.Id!, Admin, ct)).Select(c =>
+                c.DisplayText
+            )
         );
     }
 
@@ -150,13 +157,16 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
     {
         var service = CreateService();
         var ct = TestContext.Current.CancellationToken;
-        var first = await service.GetResearchStudiesAsync(ct);
+        var first = await service.GetResearchStudiesAsync(Admin, ct);
 
         var added = _data.Study("LATER");
         await _data.PutAsync(added);
 
-        Assert.Same(first, await service.GetResearchStudiesAsync(ct));
-        Assert.Contains(await CreateService().GetResearchStudiesAsync(ct), s => s.Id == added.Id);
+        Assert.Same(first, await service.GetResearchStudiesAsync(Admin, ct));
+        Assert.Contains(
+            await CreateService().GetResearchStudiesAsync(Admin, ct),
+            s => s.Id == added.Id
+        );
     }
 
     [Fact]
@@ -183,7 +193,12 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
 
         var ex = await Assert.ThrowsAsync<FhirAccessException>(() =>
             CreateService()
-                .SubmitAsync(NewStudyDraft(), [dangling], TestContext.Current.CancellationToken)
+                .SubmitAsync(
+                    NewStudyDraft(),
+                    [dangling],
+                    Admin,
+                    TestContext.Current.CancellationToken
+                )
         );
 
         Assert.Equal("App.Errors.CriteriaSubmitFailed", ex.Message);
@@ -203,10 +218,41 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         };
         var ct = TestContext.Current.CancellationToken;
 
-        await service.SubmitAsync(draft, [first, second], ct);
+        await service.SubmitAsync(draft, [first, second], Admin, ct);
 
-        var loaded = await service.GetStudyCriteriaAsync(StudyIdOf(service, draft), ct);
+        var loaded = await service.GetStudyCriteriaAsync(StudyIdOf(service, draft), Admin, ct);
         Assert.Equal(2, loaded.Count);
         Assert.Single(loaded.Select(c => c.ExistingLibraryReference).Distinct());
+    }
+
+    [Fact]
+    public async Task Only_admins_may_read_or_change_criteria()
+    {
+        var service = CreateService();
+        var viewer = CreateUser(sub: "viewer-sub", email: "viewer@example.com");
+        var ct = TestContext.Current.CancellationToken;
+        var draft = NewStudyDraft();
+        var criterion = NewCriterion("Adults", "SELECT 1");
+
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.SearchLibrariesAsync(viewer, ct)
+        );
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.GetResearchStudiesAsync(viewer, ct)
+        );
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.GetStudyCriteriaAsync(_data.Id("study"), viewer, ct)
+        );
+        await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
+            service.SubmitAsync(draft, [criterion], viewer, ct)
+        );
+
+        // Nothing reached the server: the study the refused submit would have created isn't there.
+        var studies = await FhirBundleHelpers.GetAllPagesAsync(
+            fhir.CreateClient(),
+            $"ResearchStudy?_id={StudyIdOf(service, draft)}",
+            ct
+        );
+        Assert.Empty(studies);
     }
 }
