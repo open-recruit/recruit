@@ -324,11 +324,11 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
         var ct = TestContext.Current.CancellationToken;
 
         await Assert.ThrowsAsync<UnauthorizedAccessException>(() =>
-            service.UpdateListStatusAsync(list.Id!, "retired", Viewer(), ct)
+            service.UpdateListStatusAsync(list.Id!, FhirList.ListStatus.Retired, Viewer(), ct)
         );
         await service.UpdateListStatusAsync(
             list.Id!,
-            "retired",
+            FhirList.ListStatus.Retired,
             CreateUser(sub: _data.Id("admin"), isAdmin: true),
             ct
         );

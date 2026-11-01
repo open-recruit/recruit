@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Rest;
 using Hl7.Fhir.Utility;
@@ -334,9 +335,10 @@ public sealed class ScreeningListService(
         return (summary, patientEntries.OrderByDescending(p => p.RecommendedDate).ToList());
     }
 
+    /// <summary>Retires or reactivates a screening list - admins only.</summary>
     public async Task UpdateListStatusAsync(
         string listId,
-        string status,
+        FhirList.ListStatus status,
         ClaimsPrincipal user,
         CancellationToken ct = default
     )
@@ -347,7 +349,18 @@ public sealed class ScreeningListService(
         }
 
         var client = clientFactory.CreateClient();
-        var patchDocument = $$"""[{"op":"replace","path":"/status","value":"{{status}}"}]""";
+        // Built by a serializer from the typed status, not by splicing text into JSON.
+        var patchDocument = JsonSerializer.Serialize(
+            new[]
+            {
+                new
+                {
+                    op = "replace",
+                    path = "/status",
+                    value = EnumUtility.GetLiteral(status),
+                },
+            }
+        );
 
         try
         {
