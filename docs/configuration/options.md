@@ -120,8 +120,11 @@ See [Notifications](notifications.md) for how notifications work. They are sent 
 - `Notifications__Email__PublicBaseUrl`: the URL users open the screening list at, e.g. `https://recruit.example.com/`.
   Every link in the emails is built from it, so it must be reachable from where your users read their email.
 
-The screening list checks for new candidates every minute and sends due emails every 5 minutes. Neither interval is
-configurable.
+- `Notifications__ScanIntervalSeconds` (default `60`): how often the screening list checks for new candidates. Scans
+  are scheduled in whole minutes, so a value that isn't a multiple of 60 is rounded up, and one over an hour is
+  rounded up to whole hours (at most 23).
+
+Due emails are sent every 5 minutes, which isn't configurable.
 
 - `Notifications__Testing__Enabled` (default `false`): adds buttons to the admin-only **Notification Test** page to
   simulate a new recommendation and to send due emails straight away, see

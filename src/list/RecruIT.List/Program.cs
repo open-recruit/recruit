@@ -361,9 +361,23 @@ await using (var scope = app.Services.CreateAsyncScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
     recurringJobManager.AddOrUpdate<NotificationDetectorService>(
+    var scanIntervalSeconds = scope
+        .ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<NotificationOptions>>()
+        .Value.ScanIntervalSeconds;
+    var scanInterval = DetectionSchedule.IntervalFor(scanIntervalSeconds);
+    if (scanInterval != TimeSpan.FromSeconds(scanIntervalSeconds))
+    {
+        app.Logger.LogWarning(
+            "Notifications:ScanIntervalSeconds is {Configured}s, but the detector can only run every "
+                + "whole minute (or hour), so it runs every {Effective}",
+            scanIntervalSeconds,
+            scanInterval
+        );
+    }
+
         "detect-notification-events",
         s => s.PollAllTrialsAsync(CancellationToken.None),
-        Cron.Minutely()
+        DetectionSchedule.CronFor(scanIntervalSeconds)
     );
     recurringJobManager.AddOrUpdate<NotificationSenderService>(
         NotificationSenderService.RecurringJobId,
