@@ -7,7 +7,6 @@ using RecruIT.List.Data.Entities;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Fhir;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Services.Notify;
@@ -33,7 +32,7 @@ public sealed class NotificationDetectorService(
     /// duplicated as a hand-maintained config value, so it can't drift from the actual code system.
     /// </summary>
     private static readonly string ListSearchCriteria =
-        $"List?code={Uri.EscapeDataString($"{ListFhirConstants.SystemScreeningList}|{ListFhirConstants.ScreeningListCode}")}";
+        $"List?code={Uri.EscapeDataString($"{FhirVocabulary.SystemScreeningList}|{FhirVocabulary.ScreeningListCode}")}";
 
     public async Task PollAllTrialsAsync(CancellationToken ct = default)
     {
@@ -265,7 +264,7 @@ public sealed class NotificationDetectorService(
     )
     {
         var studyId = current
-            .GetReferenceExtension(ListFhirConstants.UrlListBelongsToStudy)
+            .GetReferenceExtension(FhirVocabulary.UrlListBelongsToStudy)
             ?.GetReferencedId();
         var study = studyId is not null
             ? await client.ReadAsync<ResearchStudy>($"ResearchStudy/{studyId}", ct: ct)

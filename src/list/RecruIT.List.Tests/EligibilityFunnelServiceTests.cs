@@ -1,8 +1,6 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
-using RecruIT.FhirConstants;
 using RecruIT.List.Services.Fhir;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Tests;
@@ -28,10 +26,7 @@ public sealed class EligibilityFunnelServiceTests(FhirServerFixture fhir)
         {
             Code = code is null
                 ? new CodeableConcept { Text = label }
-                : new CodeableConcept(
-                    Recruit.CodeSystems.Urls.EligibilityFunnelPopulationType,
-                    code
-                ),
+                : new CodeableConcept(FhirVocabulary.SystemFunnelPopulationType, code),
             Count = count,
         };
 
@@ -52,11 +47,7 @@ public sealed class EligibilityFunnelServiceTests(FhirServerFixture fhir)
                 {
                     Population =
                     [
-                        Step(
-                            null,
-                            1200,
-                            Recruit.CodeSystems.EligibilityFunnelPopulationType.TotalPopulation.Code()
-                        ),
+                        Step(null, 1200, FhirVocabulary.FunnelPopulationTotal),
                         Step("Older than 18", 950),
                         Step("Not yet counted", null),
                         Step("Diabetic", 120),
@@ -66,7 +57,7 @@ public sealed class EligibilityFunnelServiceTests(FhirServerFixture fhir)
         };
         report.Extension.Add(
             new Extension(
-                ListFhirConstants.UrlListBelongsToStudy,
+                FhirVocabulary.UrlListBelongsToStudy,
                 new ResourceReference($"ResearchStudy/{study.Id}")
             )
         );

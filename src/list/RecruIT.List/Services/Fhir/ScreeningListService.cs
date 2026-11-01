@@ -73,7 +73,7 @@ public sealed class ScreeningListService(
                     StudyAcronym = trialInfo.Acronym!,
                     StudyTitle = trialInfo.Title,
                     ListStatus =
-                        EnumUtility.GetLiteral(list.Status) ?? FhirConstants.ListStatusCurrent,
+                        EnumUtility.GetLiteral(list.Status) ?? FhirVocabulary.ListStatusCurrent,
                     RecruitedCount = recruited,
                     PendingCount = pending,
                     NotRecruitedCount = notRecruited,
@@ -330,7 +330,7 @@ public sealed class ScreeningListService(
             StudyTitle = study?.Title,
             StudyDescription = study?.Description,
             Criteria = criteria,
-            ListStatus = EnumUtility.GetLiteral(list.Status) ?? FhirConstants.ListStatusCurrent,
+            ListStatus = EnumUtility.GetLiteral(list.Status) ?? FhirVocabulary.ListStatusCurrent,
             RecruitedCount = recruited,
             PendingCount = pending,
             NotRecruitedCount = notRecruited,
@@ -444,8 +444,8 @@ public sealed class ScreeningListService(
     /// <summary>Whether a screening-list entry is flagged as system-determined-ineligible.</summary>
     private static bool IsFlaggedIneligible(FhirList.EntryComponent entry) =>
         entry.Flag?.Coding?.Any(c =>
-            c.System == FhirConstants.SystemDeterminedSubjectStatus
-            && c.Code == FhirConstants.DeterminedStatusIneligible
+            c.System == FhirVocabulary.SystemDeterminedSubjectStatus
+            && c.Code == FhirVocabulary.DeterminedStatusIneligible
         ) ?? false;
 
     private static string? GetPhone(Patient? patient) =>
@@ -463,7 +463,7 @@ public sealed class ScreeningListService(
     /// across trials (dashboard, patient overview, notifications) - only the status filter varies.
     /// </summary>
     private static string BuildScreeningListsQuery(string status) =>
-        $"List?code={Uri.EscapeDataString($"{FhirConstants.SystemScreeningList}|{FhirConstants.ScreeningListCode}")}"
+        $"List?code={Uri.EscapeDataString($"{FhirVocabulary.SystemScreeningList}|{FhirVocabulary.ScreeningListCode}")}"
         + $"&status={status}"
         + "&_include=List:item"
         + "&_include:iterate=ResearchSubject:patient"
@@ -510,11 +510,11 @@ public sealed class ScreeningListService(
 
         foreach (var status in statuses)
         {
-            if (status is not null && FhirConstants.RecruitedStatuses.Contains(status))
+            if (status is not null && FhirVocabulary.RecruitedStatuses.Contains(status))
             {
                 recruited++;
             }
-            else if (status is not null && FhirConstants.NotRecruitedStatuses.Contains(status))
+            else if (status is not null && FhirVocabulary.NotRecruitedStatuses.Contains(status))
             {
                 notRecruited++;
             }
@@ -547,7 +547,7 @@ public sealed class ScreeningListService(
         var result = new Dictionary<string, TrialInfo>();
         foreach (var list in lists)
         {
-            var studyId = list.GetReferenceExtension(FhirConstants.UrlListBelongsToStudy)
+            var studyId = list.GetReferenceExtension(FhirVocabulary.UrlListBelongsToStudy)
                 ?.GetReferencedId();
             if (
                 list.Id is null

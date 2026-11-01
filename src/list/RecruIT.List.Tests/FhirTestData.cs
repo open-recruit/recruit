@@ -4,7 +4,6 @@ using Hl7.Fhir.Rest;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Fhir;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Tests;
@@ -54,8 +53,8 @@ internal sealed class FhirTestData(FhirClient client)
             new Identifier("https://fhir.example.org/mrn", Id($"mrn-{given.ToLowerInvariant()}"))
             {
                 Type = new CodeableConcept(
-                    ListFhirConstants.SystemIdentifierType,
-                    ListFhirConstants.IdentifierTypeMedicalRecordNumber
+                    FhirVocabulary.SystemIdentifierType,
+                    FhirVocabulary.IdentifierTypeMedicalRecordNumber
                 ),
             }
         );
@@ -76,7 +75,7 @@ internal sealed class FhirTestData(FhirClient client)
             Status = status,
             Study = new ResourceReference($"ResearchStudy/{study.Id}"),
             Individual = new ResourceReference($"Patient/{patient.Id}"),
-            Identifier = [new Identifier(ListFhirConstants.UrlResearchSubjectIdentifier, id)],
+            Identifier = [new Identifier(FhirVocabulary.UrlResearchSubjectIdentifier, id)],
         };
     }
 
@@ -92,13 +91,13 @@ internal sealed class FhirTestData(FhirClient client)
             Status = status,
             Mode = ListMode.Working,
             Code = new CodeableConcept(
-                ListFhirConstants.SystemScreeningList,
-                ListFhirConstants.ScreeningListCode
+                FhirVocabulary.SystemScreeningList,
+                FhirVocabulary.ScreeningListCode
             ),
         };
         list.Extension.Add(
             new Extension(
-                ListFhirConstants.UrlListBelongsToStudy,
+                FhirVocabulary.UrlListBelongsToStudy,
                 new ResourceReference($"ResearchStudy/{study.Id}")
             )
         );

@@ -3,7 +3,6 @@ using Hl7.Fhir.Model;
 using RecruIT.List.Models;
 using RecruIT.List.Services.Fhir;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 
 namespace RecruIT.List.Tests;
 
@@ -156,7 +155,7 @@ public sealed class EligibilityCriteriaBundleBuilderTests
             Assert
                 .Single(
                     group.Identifier,
-                    i => i.System == ListFhirConstants.UrlEligibilityGroupIdentifier
+                    i => i.System == FhirVocabulary.UrlEligibilityGroupIdentifier
                 )
                 .Value
         );
@@ -194,20 +193,17 @@ public sealed class EligibilityCriteriaBundleBuilderTests
         Assert.Equal(
             studyIdentifier,
             Assert
-                .Single(
-                    list.Identifier,
-                    i => i.System == ListFhirConstants.UrlScreeningListIdentifier
-                )
+                .Single(list.Identifier, i => i.System == FhirVocabulary.UrlScreeningListIdentifier)
                 .Value
         );
         Assert.Equal(
             EligibilityCriteriaBundleBuilder.ComputeIdentifierHashId(
-                ListFhirConstants.UrlScreeningListIdentifier,
+                FhirVocabulary.UrlScreeningListIdentifier,
                 studyIdentifier
             ),
             list.Id
         );
-        var belongsToStudy = list.GetReferenceExtension(ListFhirConstants.UrlListBelongsToStudy);
+        var belongsToStudy = list.GetReferenceExtension(FhirVocabulary.UrlListBelongsToStudy);
         Assert.Equal($"ResearchStudy/{study.Id}", belongsToStudy?.Reference);
         Assert.Equal("HFR", belongsToStudy?.Display);
     }

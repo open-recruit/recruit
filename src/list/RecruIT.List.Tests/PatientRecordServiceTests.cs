@@ -1,7 +1,6 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
 using RecruIT.List.Services.Fhir;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Tests;
@@ -142,8 +141,8 @@ public sealed class PatientRecordServiceTests(FhirServerFixture fhir)
             Category =
             [
                 new CodeableConcept(
-                    ListFhirConstants.SystemObservationCategory,
-                    ListFhirConstants.ObservationCategoryEligibilityAssessment
+                    FhirVocabulary.SystemObservationCategory,
+                    FhirVocabulary.ObservationCategoryEligibilityAssessment
                 ),
             ],
             Code = new CodeableConcept { Text = criterion },

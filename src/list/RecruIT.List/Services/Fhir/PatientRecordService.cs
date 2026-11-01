@@ -170,7 +170,7 @@ public sealed class PatientRecordService(
         var query =
             $"Observation?subject=Patient/{patientId}"
             + $"&focus:ResearchStudy.identifier={Uri.EscapeDataString(trialIdentifier.ToToken())}"
-            + $"&category={Uri.EscapeDataString($"{FhirConstants.SystemObservationCategory}|{FhirConstants.ObservationCategoryEligibilityAssessment}")}";
+            + $"&category={Uri.EscapeDataString($"{FhirVocabulary.SystemObservationCategory}|{FhirVocabulary.ObservationCategoryEligibilityAssessment}")}";
 
         List<Resource> resources;
         try
@@ -205,9 +205,9 @@ public sealed class PatientRecordService(
         var code = valueConcept?.Coding?.FirstOrDefault()?.Code;
         var (met, indeterminate) = code switch
         {
-            FhirConstants.SnomedCodeYes => (true, false),
-            FhirConstants.SnomedCodeNo => (false, false),
-            FhirConstants.SnomedCodeIndeterminate => ((bool?)null, true),
+            FhirVocabulary.SnomedCodeYes => (true, false),
+            FhirVocabulary.SnomedCodeNo => (false, false),
+            FhirVocabulary.SnomedCodeIndeterminate => ((bool?)null, true),
             _ => (null, false),
         };
 

@@ -13,7 +13,6 @@ using RecruIT.List.Resources;
 using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Fhir;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Services.Notify;
@@ -179,7 +178,7 @@ public sealed class NotificationTestService(
         CancellationToken ct
     )
     {
-        var studyId = list.GetReferenceExtension(ListFhirConstants.UrlListBelongsToStudy)
+        var studyId = list.GetReferenceExtension(FhirVocabulary.UrlListBelongsToStudy)
             ?.GetReferencedId();
         var study = studyId is not null
             ? await client.ReadAsync<ResearchStudy>($"ResearchStudy/{studyId}", ct: ct)

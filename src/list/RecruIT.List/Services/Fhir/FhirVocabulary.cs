@@ -2,11 +2,19 @@ using RecruIT.FhirConstants;
 
 namespace RecruIT.List.Services.Fhir;
 
-public static class FhirConstants
+public static class FhirVocabulary
 {
     public static string SystemScreeningList => Recruit.CodeSystems.Urls.ScreeningListType;
     public static string ScreeningListCode =>
         Recruit.CodeSystems.ScreeningListType.ScreeningRecommendations.Code();
+
+    /// <summary>The code system of an eligibility funnel step's population type.</summary>
+    public static string SystemFunnelPopulationType =>
+        Recruit.CodeSystems.Urls.EligibilityFunnelPopulationType;
+
+    /// <summary>The funnel step counting everyone before any criterion is applied.</summary>
+    public static string FunnelPopulationTotal =>
+        Recruit.CodeSystems.EligibilityFunnelPopulationType.TotalPopulation.Code();
 
     public static string UrlListBelongsToStudy => Recruit.Extensions.Urls.BelongsToStudy;
 

@@ -7,6 +7,7 @@ using RecruIT.List.Models;
 using RecruIT.List.Resources;
 using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Auth;
+using RecruIT.List.Services.Fhir;
 
 namespace RecruIT.List.Services;
 
@@ -14,7 +15,7 @@ namespace RecruIT.List.Services;
 /// Screening notes, stored as rows in Postgres (screening_notes) - editable by their author, with
 /// every superseded version kept in screening_note_revisions - keyed by
 /// ResearchSubject's business identifier, not its FHIR logical id (see
-/// RecruIT.List.Services.Fhir.FhirConstants.UrlResearchSubjectIdentifier). Replaces the earlier design of appending FHIR
+/// RecruIT.List.Services.Fhir.FhirVocabulary.UrlResearchSubjectIdentifier). Replaces the earlier design of appending FHIR
 /// Annotation extensions to ResearchSubject, which had an unmitigated lost-update race on
 /// concurrent adds (read-then-PATCH with no ETag) and polluted the resource's FHIR version history
 /// on every note-only edit.

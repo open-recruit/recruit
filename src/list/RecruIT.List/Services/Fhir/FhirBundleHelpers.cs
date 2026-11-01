@@ -57,12 +57,12 @@ internal static class FhirBundleHelpers
 
     /// <summary>
     /// ResearchSubject's business identifier formatted as "system|value" - see
-    /// RecruIT.List.Services.Fhir.FhirConstants.UrlResearchSubjectIdentifier. Null for subjects that predate that identifier
+    /// RecruIT.List.Services.Fhir.FhirVocabulary.UrlResearchSubjectIdentifier. Null for subjects that predate that identifier
     /// being set by query-sql-on-fhir.
     /// </summary>
     public static string? GetResearchSubjectIdentifierToken(this ResearchSubject subject) =>
         subject.Identifier?.FirstOrDefault(i =>
-            i.System == FhirConstants.UrlResearchSubjectIdentifier
+            i.System == FhirVocabulary.UrlResearchSubjectIdentifier
         )
             is { System: { Length: > 0 } system, Value: { Length: > 0 } value }
             ? $"{system}|{value}"
@@ -132,8 +132,8 @@ internal static class FhirBundleHelpers
 
     private static bool IsMedicalRecordNumber(Identifier identifier) =>
         identifier.Type?.Coding.Any(c =>
-            c.System == FhirConstants.SystemIdentifierType
-            && c.Code == FhirConstants.IdentifierTypeMedicalRecordNumber
+            c.System == FhirVocabulary.SystemIdentifierType
+            && c.Code == FhirVocabulary.IdentifierTypeMedicalRecordNumber
         )
             is true;
 }

@@ -70,7 +70,7 @@ public static class EligibilityCriteriaBundleBuilder
                 // it, since a transaction can't PUT the same resource twice.
                 var name = Slug.Create(criterion.DisplayText);
                 var libraryId = ComputeIdentifierHashId(
-                    FhirConstants.UrlUiCreatedEligibilityLibraryIdentifier,
+                    FhirVocabulary.UrlUiCreatedEligibilityLibraryIdentifier,
                     name
                 );
                 libraryReference = new ResourceReference($"Library/{libraryId}");
@@ -99,10 +99,10 @@ public static class EligibilityCriteriaBundleBuilder
         var groupIdentifierValue = studyDraft.ExistingStudyId ?? Slug.Create(studyDraft.Title);
 
         group.Identifier.Add(
-            new Identifier(FhirConstants.UrlEligibilityGroupIdentifier, groupIdentifierValue)
+            new Identifier(FhirVocabulary.UrlEligibilityGroupIdentifier, groupIdentifierValue)
         );
         group.Id = ComputeIdentifierHashId(
-            FhirConstants.UrlEligibilityGroupIdentifier,
+            FhirVocabulary.UrlEligibilityGroupIdentifier,
             groupIdentifierValue
         );
         var groupReference = new ResourceReference($"Group/{group.Id}");
@@ -149,7 +149,7 @@ public static class EligibilityCriteriaBundleBuilder
             ],
         };
         library.Identifier.Add(
-            new Identifier(FhirConstants.UrlUiCreatedEligibilityLibraryIdentifier, name)
+            new Identifier(FhirVocabulary.UrlUiCreatedEligibilityLibraryIdentifier, name)
         );
 
         return library;
@@ -237,12 +237,12 @@ public static class EligibilityCriteriaBundleBuilder
         var uiCreatedIdentifierValue = Slug.Create(studyDraft.Title);
         study.Identifier.Add(
             new Identifier(
-                FhirConstants.UrlUiCreatedResearchStudyIdentifier,
+                FhirVocabulary.UrlUiCreatedResearchStudyIdentifier,
                 uiCreatedIdentifierValue
             )
         );
         study.Id = ComputeIdentifierHashId(
-            FhirConstants.UrlUiCreatedResearchStudyIdentifier,
+            FhirVocabulary.UrlUiCreatedResearchStudyIdentifier,
             uiCreatedIdentifierValue
         );
         return study;
@@ -266,16 +266,16 @@ public static class EligibilityCriteriaBundleBuilder
             Status = FhirList.ListStatus.Current,
             Mode = ListMode.Working,
             Code = new CodeableConcept(
-                FhirConstants.SystemScreeningList,
-                FhirConstants.ScreeningListCode
+                FhirVocabulary.SystemScreeningList,
+                FhirVocabulary.ScreeningListCode
             ),
         };
         list.Identifier.Add(
-            new Identifier(FhirConstants.UrlScreeningListIdentifier, studyIdentifierValue)
+            new Identifier(FhirVocabulary.UrlScreeningListIdentifier, studyIdentifierValue)
         );
         list.Extension.Add(
             new Extension(
-                FhirConstants.UrlListBelongsToStudy,
+                FhirVocabulary.UrlListBelongsToStudy,
                 new ResourceReference($"ResearchStudy/{study.Id}")
                 {
                     Display = study.GetStudyDisplayName(),
@@ -283,7 +283,7 @@ public static class EligibilityCriteriaBundleBuilder
             )
         );
         list.Id = ComputeIdentifierHashId(
-            FhirConstants.UrlScreeningListIdentifier,
+            FhirVocabulary.UrlScreeningListIdentifier,
             studyIdentifierValue
         );
         return list;

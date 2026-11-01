@@ -5,7 +5,6 @@ using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Fhir;
 using static RecruIT.List.Tests.TestUsers;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Status = Hl7.Fhir.Model.ResearchSubject.ResearchSubjectStatus;
 using Task = System.Threading.Tasks.Task;
 
@@ -192,8 +191,8 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
             [(olderSubject, Now.AddDays(-3)), (newerSubject, Now.AddDays(-1))]
         );
         list.Entry[0].Flag = new CodeableConcept(
-            ListFhirConstants.SystemDeterminedSubjectStatus,
-            ListFhirConstants.DeterminedStatusIneligible
+            FhirVocabulary.SystemDeterminedSubjectStatus,
+            FhirVocabulary.DeterminedStatusIneligible
         );
         await _data.PutAsync(study, older, newer, olderSubject, newerSubject, list);
         await GrantViewerAsync(study);
@@ -216,7 +215,7 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
         Assert.True(olderEntry.SystemDeterminedIneligible);
         Assert.False(patients[0].SystemDeterminedIneligible);
         Assert.Equal(
-            $"{ListFhirConstants.UrlResearchSubjectIdentifier}|{olderSubject.Identifier[0].Value}",
+            $"{FhirVocabulary.UrlResearchSubjectIdentifier}|{olderSubject.Identifier[0].Value}",
             olderEntry.ResearchSubjectIdentifier
         );
     }
