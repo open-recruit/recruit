@@ -475,6 +475,12 @@
   <data name="App.Errors.CannotModifyOwnGrant" xml:space="preserve">
     <value>You cannot change or revoke your own access.</value>
   </data>
+  <data name="App.Errors.PatientLocationLoadFailed" xml:space="preserve">
+    <value>The patient's last known location could not be loaded.</value>
+  </data>
+  <data name="App.Errors.CriteriaStatusLoadFailed" xml:space="preserve">
+    <value>The patient's eligibility criteria could not be loaded.</value>
+  </data>
   <data name="App.Errors.PatientRecordUpdateFailed" xml:space="preserve">
     <value>The patient's record could not be updated. Please try again.</value>
   </data>

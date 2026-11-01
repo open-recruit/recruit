@@ -32,7 +32,8 @@ public sealed class PatientRecordService(
     /// <summary>
     /// Finds the most recent Encounter with a usable location for the patient. There is no bulk
     /// "latest per patient" FHIR query, so this is fetched per-patient/on-demand, mirroring
-    /// list-old's fetchLatestEncounterWithLocation.
+    /// list-old's fetchLatestEncounterWithLocation. Null when the patient has no encounter with a
+    /// location; a failure to ask is a FhirAccessException, like in every other FHIR service.
     /// </summary>
     public async Task<LatestLocationDto?> GetLatestLocationAsync(
         string patientId,
@@ -46,8 +47,8 @@ public sealed class PatientRecordService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(ex, "Failed to fetch encounters for Patient/{PatientId}", patientId);
-            return null;
+            logger.LogError(ex, "Failed to fetch encounters for Patient/{PatientId}", patientId);
+            throw new FhirAccessException(localizer["App.Errors.PatientLocationLoadFailed"], ex);
         }
 
         // Deduplicated rather than handed straight to ToDictionary: a FHIR server re-runs
@@ -178,12 +179,12 @@ public sealed class PatientRecordService(
         }
         catch (Exception ex)
         {
-            logger.LogWarning(
+            logger.LogError(
                 ex,
                 "Failed to fetch eligibility criteria status for Patient/{PatientId}",
                 patientId
             );
-            return [];
+            throw new FhirAccessException(localizer["App.Errors.CriteriaStatusLoadFailed"], ex);
         }
 
         return resources

@@ -13,9 +13,9 @@ public sealed class PatientRecordServiceTests(FhirServerFixture fhir)
 
     private readonly FhirTestData _data = new(fhir.CreateClient());
 
-    private PatientRecordService CreateService() =>
+    private PatientRecordService CreateService(Func<DelegatingHandler>? handler = null) =>
         new(
-            fhir.CreateClientFactory(),
+            fhir.CreateClientFactory(handler),
             new FakeStringLocalizer(),
             NullLogger<PatientRecordService>.Instance
         );
@@ -151,4 +151,46 @@ public sealed class PatientRecordServiceTests(FhirServerFixture fhir)
             Focus = [new ResourceReference($"ResearchStudy/{study.Id}")],
             Value = new CodeableConcept(Snomed, snomedCode) { Text = note },
         };
+
+    [Fact]
+    public async Task A_failure_reading_the_location_is_reported_not_mistaken_for_no_location()
+    {
+        var patient = _data.Patient("Erika", "Unreachable");
+        await _data.PutAsync(patient);
+
+        var ex = await Assert.ThrowsAsync<FhirAccessException>(() =>
+            CreateService(() => new UnreachableFhirServer())
+                .GetLatestLocationAsync(patient.Id!, TestContext.Current.CancellationToken)
+        );
+
+        Assert.Equal("App.Errors.PatientLocationLoadFailed", ex.Message);
+    }
+
+    [Fact]
+    public async Task A_failure_reading_the_criteria_is_reported_not_mistaken_for_no_criteria()
+    {
+        var study = _data.Study("UNREACHABLE");
+        var patient = _data.Patient("Max", "Unreachable");
+        await _data.PutAsync(study, patient);
+
+        var ex = await Assert.ThrowsAsync<FhirAccessException>(() =>
+            CreateService(() => new UnreachableFhirServer())
+                .GetEligibilityCriteriaStatusAsync(
+                    patient.Id!,
+                    FhirTestData.TrialOf(study),
+                    TestContext.Current.CancellationToken
+                )
+        );
+
+        Assert.Equal("App.Errors.CriteriaStatusLoadFailed", ex.Message);
+    }
+
+    /// <summary>A FHIR server that can't be reached.</summary>
+    private sealed class UnreachableFhirServer : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        ) => throw new HttpRequestException("connection refused");
+    }
 }

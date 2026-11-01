@@ -534,6 +534,12 @@
   <data name="App.Errors.CannotModifyOwnGrant" xml:space="preserve">
     <value>Sie können Ihren eigenen Zugriff nicht ändern oder entziehen.</value>
   </data>
+  <data name="App.Errors.PatientLocationLoadFailed" xml:space="preserve">
+    <value>Der letzte bekannte Aufenthaltsort des Patienten konnte nicht geladen werden.</value>
+  </data>
+  <data name="App.Errors.CriteriaStatusLoadFailed" xml:space="preserve">
+    <value>Die Eignungskriterien des Patienten konnten nicht geladen werden.</value>
+  </data>
   <data name="App.Errors.PatientRecordUpdateFailed" xml:space="preserve">
     <value>Der Datensatz des Patienten konnte nicht aktualisiert werden. Bitte versuchen Sie es erneut.</value>
   </data>
