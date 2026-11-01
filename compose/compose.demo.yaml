@@ -175,7 +175,7 @@ services:
   convert-to-delta:
     # the fhir-to-lakehouse image already ships Pathling, Delta Lake, and hadoop-aws along with all
     # their jars, so nothing needs to be downloaded at runtime.
-    image: ghcr.io/bzkf/fhir-to-lakehouse:v1.15.0@sha256:c3f19ce27a4a895042857b8d545e081a51b775aff1e9aa37eae4a720ba51456a
+    image: ghcr.io/bzkf/fhir-to-lakehouse:v1.16.0@sha256:0e1e6f42dae70e4470a50b5218e7ce35008613acca13d1e1e96e56b82ccf6b68
     ipc: none
     security_opt:
       - "no-new-privileges:true"
@@ -220,7 +220,7 @@ services:
         condition: service_healthy
 
   warehousekeeper:
-    image: ghcr.io/bzkf/fhir-to-lakehouse:v1.15.0@sha256:c3f19ce27a4a895042857b8d545e081a51b775aff1e9aa37eae4a720ba51456a
+    image: ghcr.io/bzkf/fhir-to-lakehouse:v1.16.0@sha256:0e1e6f42dae70e4470a50b5218e7ce35008613acca13d1e1e96e56b82ccf6b68
     restart: "no"
     ipc: none
     security_opt:
