@@ -1,6 +1,7 @@
 @page "/notifications"
 @attribute [Authorize]
 @inject NotificationSubscriptionService NotificationSubscriptionService
+@inject ErrorReporter Errors
 @inject NotificationInboxState NotificationInboxState
 @inject ScreeningListService ScreeningListService
 @inject BreadcrumbState BreadcrumbState
@@ -121,9 +122,9 @@
 
             await NotificationInboxState.RefreshAsync(_user);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _errorMessage = Localizer["App.Notifications.LoadErrorFallback"];
+            _errorMessage = Errors.Report(ex, "load the notifications", Localizer["App.Notifications.LoadErrorFallback"]);
         }
         finally
         {
@@ -177,7 +178,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.Notifications.UpdateErrorTitle"]);
+            Toast.Error(Errors.Report(ex, "update the notifications"), Localizer["App.Notifications.UpdateErrorTitle"]);
             await LoadAsync();
         }
         finally

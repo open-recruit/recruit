@@ -4,6 +4,7 @@
 @using System.Text
 @using MailKit.Net.Smtp
 @inject NotificationSenderService SenderService
+@inject ErrorReporter Errors
 @inject NotificationTestService TestService
 @inject NotificationSubscriptionService SubscriptionService
 @inject ScreeningListService ScreeningListService
@@ -269,8 +270,9 @@ else
             {
                 _trials = [.. await ScreeningListService.GetAccessibleTrialsAsync(_user)];
             }
-            catch (Exception)
+            catch (Exception ex)
             {
+                Errors.Swallowed(ex, "list the trials for the simulation");
                 _simulationError = Localizer["App.NotificationTest.LoadError"];
             }
         }
@@ -296,8 +298,9 @@ else
             _subscribed = await SubscriptionService.GetAsync(_user, summary.TrialIdentifier) is not null;
             _selectedTrial = summary;
         }
-        catch (Exception)
+        catch (Exception ex)
         {
+            Errors.Swallowed(ex, "load the selected trial for the simulation");
             _simulationError = Localizer["App.NotificationTest.LoadError"];
         }
     }
@@ -321,7 +324,7 @@ else
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.NotificationTest.ReRecommendErrorTitle"]);
+            Toast.Error(Errors.Report(ex, "re-recommend a patient"), Localizer["App.NotificationTest.ReRecommendErrorTitle"]);
         }
         finally
         {
@@ -338,7 +341,7 @@ else
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.NotificationTest.SendDueButton"]);
+            Toast.Error(Errors.Report(ex, "queue the due emails"), Localizer["App.NotificationTest.SendDueButton"]);
         }
     }
 

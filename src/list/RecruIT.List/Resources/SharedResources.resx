@@ -454,6 +454,9 @@
   <data name="App.Errors.NotAuthorizedManageAccess" xml:space="preserve">
     <value>You are not authorized to manage access for this trial.</value>
   </data>
+  <data name="App.Errors.Unexpected" xml:space="preserve">
+    <value>Something went wrong. Please try again; if it keeps happening, contact an administrator.</value>
+  </data>
   <data name="App.Errors.NotAuthorizedAdminOnly" xml:space="preserve">
     <value>You are not authorized to view this page. Administrator access is required.</value>
   </data>

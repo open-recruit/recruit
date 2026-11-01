@@ -357,4 +357,42 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
         Assert.Equal((list.Id!, "RESOLVE"), resolved[token]);
         Assert.Null(resolved[unknown]);
     }
+
+    [Fact]
+    public async Task A_failure_resolving_a_trial_is_logged_and_still_reaches_the_caller()
+    {
+        var log = new CapturingLogger<ScreeningListService>();
+        var service = new ScreeningListService(
+            fhir.CreateClientFactory(() => new FailingHandler()),
+            new TrialAccessService(
+                _db,
+                new FakeStringLocalizer(),
+                NullLogger<TrialAccessService>.Instance
+            ),
+            new FakeStringLocalizer(),
+            log
+        );
+        var token = new TrialIdentifier(
+            FhirTestData.TrialIdentifierSystem,
+            "unreachable"
+        ).ToToken();
+
+        await Assert.ThrowsAnyAsync<Exception>(() =>
+            service.ResolveListForTrialAsync(token, TestContext.Current.CancellationToken)
+        );
+
+        var entry = Assert.Single(log.Entries);
+        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Error, entry.Level);
+        Assert.NotNull(entry.Exception);
+        Assert.Contains(token, entry.Message);
+    }
+
+    /// <summary>A FHIR server that can't be reached.</summary>
+    private sealed class FailingHandler : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        ) => throw new HttpRequestException("connection refused");
+    }
 }

@@ -2,10 +2,12 @@ using Hangfire;
 using Hangfire.Common;
 using Hl7.Fhir.Model;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using RecruIT.List.Data.Entities;
 using RecruIT.List.Models;
 using RecruIT.List.Options;
+using RecruIT.List.Services;
 using RecruIT.List.Services.Notify;
 using static RecruIT.List.Tests.TestUsers;
 using FhirList = Hl7.Fhir.Model.List;
@@ -34,16 +36,20 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
     private System.Security.Claims.ClaimsPrincipal Admin() =>
         CreateUser(sub: _data.Id("admin"), email: "admin@example.com", isAdmin: true);
 
-    private NotificationTestService CreateService(bool enabled = true)
+    private NotificationTestService CreateService(
+        bool enabled = true,
+        ILogger<NotificationDetectorService>? detectorLog = null,
+        Func<DelegatingHandler>? handler = null
+    )
     {
-        var clientFactory = fhir.CreateClientFactory();
+        var clientFactory = fhir.CreateClientFactory(handler);
         return new NotificationTestService(
             clientFactory,
             new NotificationDetectorService(
                 clientFactory,
                 _db,
                 _metrics.CreateRecruitMetrics(_db),
-                NullLogger<NotificationDetectorService>.Instance
+                detectorLog ?? NullLogger<NotificationDetectorService>.Instance
             ),
             _db,
             _jobs,
@@ -120,6 +126,27 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
     }
 
     [Fact]
+    public async Task A_patient_who_cannot_be_read_is_notified_about_as_unknown_and_the_reason_is_logged()
+    {
+        var (study, list, subject) = await SeedTrialAsync();
+        await SubscribeAsync(study, "alice");
+        var log = new CapturingLogger<NotificationDetectorService>();
+        var ct = TestContext.Current.CancellationToken;
+
+        await CreateService(detectorLog: log, handler: () => new FailingPatientReads())
+            .ReRecommendAsync(list.Id!, subject.Id!, Admin(), ct);
+
+        await using var db = _db.CreateDbContext();
+        Assert.Equal(
+            "Unknown patient",
+            (await db.NotificationEvents.SingleAsync(ct)).PatientDisplayName
+        );
+        var warning = Assert.Single(log.Entries, e => e.Level == LogLevel.Warning);
+        Assert.NotNull(warning.Exception);
+        Assert.Contains($"ResearchSubject/{subject.Id}", warning.Message);
+    }
+
+    [Fact]
     public async Task The_patient_is_back_on_the_list_afterwards_recommended_now()
     {
         var (_, list, subject) = await SeedTrialAsync();
@@ -145,7 +172,7 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
     {
         var (_, list, _) = await SeedTrialAsync();
 
-        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        var ex = await Assert.ThrowsAsync<UserFacingException>(() =>
             CreateService()
                 .ReRecommendAsync(
                     list.Id!,
@@ -202,5 +229,17 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
         public void Trigger(string recurringJobId) => Triggered.Add(recurringJobId);
 
         public void RemoveIfExists(string recurringJobId) => throw new NotSupportedException();
+    }
+
+    /// <summary>The FHIR server failing whenever a Patient is read, and nothing else.</summary>
+    private sealed class FailingPatientReads : DelegatingHandler
+    {
+        protected override Task<HttpResponseMessage> SendAsync(
+            HttpRequestMessage request,
+            CancellationToken cancellationToken
+        ) =>
+            request.RequestUri!.AbsolutePath.Contains("/Patient/")
+                ? throw new HttpRequestException("connection reset")
+                : base.SendAsync(request, cancellationToken);
     }
 }

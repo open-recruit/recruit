@@ -367,10 +367,17 @@ public sealed class NotificationDetectorService(
             var patient = await client.ReadAsync<Patient>($"Patient/{patientId}", ct: ct);
             return FhirBundleHelpers.GetPatientDisplayName(patient, patientId);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
             // Best-effort - a generic display name is preferable to blocking event detection on a
-            // single patient/subject read failure.
+            // single patient/subject read failure. That name is what gets stored with the event,
+            // so the failure is logged: it's the only trace of why a notification says
+            // "Unknown patient".
+            logger.LogWarning(
+                ex,
+                "Could not read the patient behind {SubjectReference}; notifying as 'Unknown patient'",
+                researchSubjectReference
+            );
             return "Unknown patient";
         }
     }

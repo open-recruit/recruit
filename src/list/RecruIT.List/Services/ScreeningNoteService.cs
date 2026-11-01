@@ -7,7 +7,6 @@ using RecruIT.List.Models;
 using RecruIT.List.Resources;
 using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Auth;
-using RecruIT.List.Services.Fhir;
 
 namespace RecruIT.List.Services;
 
@@ -70,7 +69,7 @@ public sealed class ScreeningNoteService(
                 "Failed to save screening note for ResearchSubject identifier {ResearchSubjectIdentifier}",
                 researchSubjectIdentifier
             );
-            throw new FhirAccessException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
+            throw new UserFacingException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
         }
     }
 
@@ -132,7 +131,7 @@ public sealed class ScreeningNoteService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to update screening note {NoteId}", noteId);
-            throw new FhirAccessException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
+            throw new UserFacingException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
         }
     }
 

@@ -300,6 +300,7 @@ builder.Services.AddScoped<PatientRecordService>();
 builder.Services.AddScoped<EligibilityCriteriaService>();
 builder.Services.AddScoped<EligibilityFunnelService>();
 builder.Services.AddScoped<BreadcrumbState>();
+builder.Services.AddScoped<ErrorReporter>();
 
 builder.Services.AddScoped<INotificationChannel, EmailNotificationChannel>();
 builder.Services.AddScoped<NotificationSubscriptionService>();
@@ -360,7 +361,6 @@ app.Services.GetRequiredService<RecruitMetrics>();
 await using (var scope = app.Services.CreateAsyncScope())
 {
     var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    recurringJobManager.AddOrUpdate<NotificationDetectorService>(
     var scanIntervalSeconds = scope
         .ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<NotificationOptions>>()
         .Value.ScanIntervalSeconds;
@@ -375,6 +375,7 @@ await using (var scope = app.Services.CreateAsyncScope())
         );
     }
 
+    recurringJobManager.AddOrUpdate<NotificationDetectorService>(
         "detect-notification-events",
         s => s.PollAllTrialsAsync(CancellationToken.None),
         DetectionSchedule.CronFor(scanIntervalSeconds)

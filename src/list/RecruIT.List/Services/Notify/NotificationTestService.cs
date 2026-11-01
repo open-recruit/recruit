@@ -80,7 +80,7 @@ public sealed class NotificationTestService(
         var list = await ReadListAsync(client, listId, ct);
         var entry =
             list.Entry.FirstOrDefault(e => e.Item.GetReferencedId() == researchSubjectId)
-            ?? throw new InvalidOperationException(
+            ?? throw new UserFacingException(
                 localizer["App.NotificationTest.ReRecommendNotOnList"]
             );
         var reference = entry.Item.Reference!;
@@ -94,7 +94,7 @@ public sealed class NotificationTestService(
         }
         catch (FhirOperationException ex) when (IsVersionConflict(ex))
         {
-            throw new InvalidOperationException(
+            throw new UserFacingException(
                 localizer["App.NotificationTest.ReRecommendConflict"],
                 ex
             );
@@ -184,9 +184,7 @@ public sealed class NotificationTestService(
             ? await client.ReadAsync<ResearchStudy>($"ResearchStudy/{studyId}", ct: ct)
             : null;
         return study?.GetTrialIdentifier()?.ToToken()
-            ?? throw new InvalidOperationException(
-                localizer["App.NotificationTest.ReRecommendNoTrial"]
-            );
+            ?? throw new UserFacingException(localizer["App.NotificationTest.ReRecommendNoTrial"]);
     }
 
     private async Task<int> CountEventsAsync(

@@ -513,6 +513,9 @@
   <data name="App.Errors.NotAuthorizedManageAccess" xml:space="preserve">
     <value>Sie sind nicht berechtigt, den Zugriff auf diese Studie zu verwalten.</value>
   </data>
+  <data name="App.Errors.Unexpected" xml:space="preserve">
+    <value>Etwas ist schiefgelaufen. Bitte versuchen Sie es erneut; wenden Sie sich an einen Administrator, falls das Problem weiterhin besteht.</value>
+  </data>
   <data name="App.Errors.NotAuthorizedAdminOnly" xml:space="preserve">
     <value>Sie sind nicht berechtigt, diese Seite anzuzeigen. Administratorrechte sind erforderlich.</value>
   </data>

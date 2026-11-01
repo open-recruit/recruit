@@ -384,29 +384,43 @@ public sealed class ScreeningListService(
     {
         var client = clientFactory.CreateClient();
 
-        var studyResources = await FhirBundleHelpers.GetAllPagesAsync(
-            client,
-            $"ResearchStudy?identifier={Uri.EscapeDataString(trialIdentifierToken)}",
-            ct
-        );
-        var study = studyResources.OfType<ResearchStudy>().FirstOrDefault();
-        if (study?.Id is null)
+        try
         {
-            return null;
-        }
+            var studyResources = await FhirBundleHelpers.GetAllPagesAsync(
+                client,
+                $"ResearchStudy?identifier={Uri.EscapeDataString(trialIdentifierToken)}",
+                ct
+            );
+            var study = studyResources.OfType<ResearchStudy>().FirstOrDefault();
+            if (study?.Id is null)
+            {
+                return null;
+            }
 
-        var listResources = await FhirBundleHelpers.GetAllPagesAsync(
-            client,
-            $"List?belongs-to-study=ResearchStudy/{study.Id}",
-            ct
-        );
-        var list = listResources.OfType<FhirList>().FirstOrDefault();
-        if (list?.Id is null)
+            var listResources = await FhirBundleHelpers.GetAllPagesAsync(
+                client,
+                $"List?belongs-to-study=ResearchStudy/{study.Id}",
+                ct
+            );
+            var list = listResources.OfType<FhirList>().FirstOrDefault();
+            if (list?.Id is null)
+            {
+                return null;
+            }
+
+            return (list.Id, study.GetStudyAcronym() ?? list.Id);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
-            return null;
+            // Callers decide what a failure means for them (the feed page, the email digest) - this
+            // only makes sure it's logged, like every other FHIR read in this service.
+            logger.LogError(
+                ex,
+                "Failed to resolve the screening list of trial {Trial}",
+                trialIdentifierToken
+            );
+            throw;
         }
-
-        return (list.Id, study.GetStudyAcronym() ?? list.Id);
     }
 
     /// <summary>
