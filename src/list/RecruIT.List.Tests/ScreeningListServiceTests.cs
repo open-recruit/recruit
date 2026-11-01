@@ -388,6 +388,33 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
         Assert.Contains(token, entry.Message);
     }
 
+    [Fact]
+    public async Task More_lists_than_fit_on_a_page_are_all_listed_though_the_server_repeats_includes()
+    {
+        // The query asks for 100 lists a page and pulls in each one's study, which the server then
+        // includes again on every page it emits - the same ResearchStudy arriving more than once.
+        const int lists = 105;
+        var study = _data.Study("PAGED");
+        var patient = _data.Patient("Erika", "Paged");
+        var subject = _data.Subject(study, patient);
+        var resources = new List<Resource> { study, patient, subject };
+        for (var i = 0; i < lists; i++)
+        {
+            resources.Add(_data.ScreeningList(study, [(subject, Now)]));
+        }
+
+        await _data.PutAsync([.. resources]);
+        var admin = CreateUser(sub: _data.Id("admin"), isAdmin: true);
+        var service = CreateService();
+        var ct = TestContext.Current.CancellationToken;
+
+        var trials = await service.GetAccessibleTrialsAsync(admin, ct);
+        var overview = await service.GetPatientsAcrossTrialsAsync(admin, ct);
+
+        Assert.Equal(lists, trials.Count(t => t.StudyId == study.Id));
+        Assert.Equal(lists, overview.Single(o => o.PatientId == patient.Id).Trials.Count);
+    }
+
     /// <summary>A FHIR server that can't be reached.</summary>
     private sealed class FailingHandler : DelegatingHandler
     {

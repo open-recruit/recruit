@@ -38,9 +38,7 @@ public sealed class ScreeningListService(
             throw new FhirAccessException(localizer["App.Errors.TrialsLoadFailed"], ex);
         }
 
-        var researchSubjectsById = resources
-            .OfType<ResearchSubject>()
-            .ToDictionary(rs => rs.Id!, rs => rs);
+        var researchSubjectsById = resources.ToLookupById<ResearchSubject>();
         var lists = resources.OfType<FhirList>().ToList();
 
         var trialInfoByListId = BuildTrialInfoByListId(resources, lists);
@@ -109,8 +107,8 @@ public sealed class ScreeningListService(
             throw new FhirAccessException(localizer["App.Errors.PatientOverviewLoadFailed"], ex);
         }
 
-        var subjectsById = resources.OfType<ResearchSubject>().ToDictionary(rs => rs.Id!, rs => rs);
-        var patientsById = resources.OfType<Patient>().ToDictionary(p => p.Id!, p => p);
+        var subjectsById = resources.ToLookupById<ResearchSubject>();
+        var patientsById = resources.ToLookupById<Patient>();
         var lists = resources.OfType<FhirList>().ToList();
 
         var trialInfoByListId = BuildTrialInfoByListId(resources, lists);
@@ -250,10 +248,7 @@ public sealed class ScreeningListService(
         var group = enrolledGroupId is not null
             ? resources.OfType<Group>().FirstOrDefault(g => g.Id == enrolledGroupId)
             : null;
-        var librariesById = resources
-            .OfType<Library>()
-            .Where(l => l.Id is not null)
-            .ToDictionary(l => l.Id!, l => l);
+        var librariesById = resources.ToLookupById<Library>();
         var criteria = (group?.Characteristic ?? [])
             .Where(c => !string.IsNullOrEmpty(c.Code?.Text))
             .Select(c =>
@@ -275,8 +270,8 @@ public sealed class ScreeningListService(
             })
             .ToList();
 
-        var subjectsById = resources.OfType<ResearchSubject>().ToDictionary(rs => rs.Id!, rs => rs);
-        var patientsById = resources.OfType<Patient>().ToDictionary(p => p.Id!, p => p);
+        var subjectsById = resources.ToLookupById<ResearchSubject>();
+        var patientsById = resources.ToLookupById<Patient>();
 
         var patientEntries = new List<PatientListEntryDto>();
 
@@ -539,10 +534,7 @@ public sealed class ScreeningListService(
         IEnumerable<FhirList> lists
     )
     {
-        var studiesById = resources
-            .OfType<ResearchStudy>()
-            .Where(s => s.Id is not null)
-            .ToDictionary(s => s.Id!, s => s);
+        var studiesById = resources.ToLookupById<ResearchStudy>();
 
         var result = new Dictionary<string, TrialInfo>();
         foreach (var list in lists)

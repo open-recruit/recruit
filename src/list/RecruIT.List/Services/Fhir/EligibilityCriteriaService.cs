@@ -219,14 +219,8 @@ public sealed class EligibilityCriteriaService(
         }
 
         var study = resources.OfType<ResearchStudy>().FirstOrDefault(s => s.Id == studyId);
-        var groupsById = resources
-            .OfType<Group>()
-            .Where(g => g.Id is not null)
-            .ToDictionary(g => g.Id!);
-        var librariesById = resources
-            .OfType<Library>()
-            .Where(l => l.Id is not null)
-            .ToDictionary(l => l.Id!);
+        var groupsById = resources.ToLookupById<Group>();
+        var librariesById = resources.ToLookupById<Library>();
 
         var criteria = new List<CriterionDraft>();
         foreach (var enrollment in study?.Enrollment ?? [])

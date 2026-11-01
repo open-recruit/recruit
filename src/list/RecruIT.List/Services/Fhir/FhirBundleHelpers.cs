@@ -40,6 +40,20 @@ internal static class FhirBundleHelpers
         return resources;
     }
 
+    /// <summary>
+    /// The resources of one type by id. A FHIR server runs _include again for every page it emits, so
+    /// across the pages GetAllPagesAsync follows the same included resource can arrive more than
+    /// once - which plain ToDictionary would reject. Copies of one id are the same resource, so the
+    /// first is kept.
+    /// </summary>
+    public static Dictionary<string, T> ToLookupById<T>(this IEnumerable<Resource> resources)
+        where T : Resource =>
+        resources
+            .OfType<T>()
+            .Where(r => r.Id is not null)
+            .GroupBy(r => r.Id!)
+            .ToDictionary(g => g.Key, g => g.First());
+
     public static ResourceReference? GetReferenceExtension(this IExtendable element, string url) =>
         element.GetExtension(url)?.Value as ResourceReference;
 
