@@ -13,12 +13,15 @@ namespace RecruIT.List.Tests;
 
 /// <summary>
 /// Shared by every test class that talks to a FHIR server, so they run against one HAPI instance
-/// (which takes a while to start) rather than each starting their own. Tests in a collection run
+/// (which takes a while to start) rather than each starting their own. A Postgres is available to
+/// them too, for the ones that also need real database behavior (see PostgresFixture). Tests in a collection run
 /// one after another, but the server keeps every test's resources - so each test writes under ids
 /// of its own (see FhirTestData) and only asserts on those.
 /// </summary>
 [CollectionDefinition(Name)]
-public sealed class FhirServerCollection : ICollectionFixture<FhirServerFixture>
+public sealed class FhirServerCollection
+    : ICollectionFixture<FhirServerFixture>,
+        ICollectionFixture<PostgresFixture>
 {
     public const string Name = "fhir-server";
 }

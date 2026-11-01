@@ -142,13 +142,31 @@ public sealed class NotificationSenderService(
                     lastSentBySubscription.GetValueOrDefault(subscriptionId)
                     ?? subscription.CreatedAt;
 
-                var nextSlot = NotificationScheduling.ComputeEmailScheduledFor(
-                    subscription.Frequency,
-                    subscription.DayOfWeek,
-                    subscription.TimeOfDay,
-                    subscription.TimeZoneId,
-                    lastSent
-                );
+                DateTimeOffset nextSlot;
+                try
+                {
+                    nextSlot = NotificationScheduling.ComputeEmailScheduledFor(
+                        subscription.Frequency,
+                        subscription.DayOfWeek,
+                        subscription.TimeOfDay,
+                        subscription.TimeZoneId,
+                        lastSent
+                    );
+                }
+                catch (Exception ex) when (ex is not OperationCanceledException)
+                {
+                    // E.g. a time zone that no longer exists, or a Daily subscription with no time
+                    // of day. One subscription like that must not stop everyone else's digests -
+                    // it's skipped (and reported every tick until someone fixes or removes it).
+                    logger.LogError(
+                        ex,
+                        "Cannot work out when subscription {SubscriptionId} ({Frequency}, time zone {TimeZoneId}) is next due - skipping it",
+                        subscriptionId,
+                        subscription.Frequency,
+                        subscription.TimeZoneId
+                    );
+                    continue;
+                }
 
                 if (nextSlot > now)
                 {
@@ -269,7 +287,11 @@ public sealed class NotificationSenderService(
                     delivery.EmailDigestId = digestId;
                 }
             }
+            // The run being cancelled (the app shutting down) isn't a failed send: it ends the run
+            // instead of being counted against this recipient and retried against the next. A send
+            // that merely timed out is also an OperationCanceledException, but not of our token.
             catch (Exception ex)
+                when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
             {
                 metrics.RecordEmailSend(Stopwatch.GetElapsedTime(sendStart), succeeded: false);
                 logger.LogError(
@@ -297,6 +319,12 @@ public sealed class NotificationSenderService(
                     metrics.RecordEmailDeliveriesDropped(stale.Count);
                 }
             }
+
+            // Recorded as soon as this recipient's email is out, not once at the end: whatever
+            // stops the run later (a failure, the app shutting down) must not make the next run send
+            // it again. CancellationToken.None because an email that is already sent has to be
+            // recorded even if the run is being cancelled.
+            await db.SaveChangesAsync(CancellationToken.None);
         }
 
         await db.SaveChangesAsync(ct);
