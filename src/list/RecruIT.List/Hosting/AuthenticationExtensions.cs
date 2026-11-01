@@ -128,7 +128,7 @@ internal static class AuthenticationExtensions
     // validate returnUrl themselves before using it - otherwise a signed-in user could be bounced to
     // an attacker-controlled URL right after completing a real OIDC login. Mirrors the classic
     // ASP.NET Identity IsLocalUrl check: a bare "/path", not a protocol-relative "//host" or "/\host".
-    private static bool IsLocalUrl([NotNullWhen(true)] string? url) =>
+    internal static bool IsLocalUrl([NotNullWhen(true)] string? url) =>
         !string.IsNullOrEmpty(url)
         && url[0] == '/'
         && (url.Length == 1 || (url[1] != '/' && url[1] != '\\'));
