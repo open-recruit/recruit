@@ -510,15 +510,10 @@ app.MapGet(
             CancellationToken ct
         ) =>
         {
-            var trialTokens = await notifications.MarkEmailDigestReadAsync(digestId, user, ct);
-            if (trialTokens.Count > 1)
-            {
-                return Results.LocalRedirect("/");
-            }
-
+            var trialToken = await notifications.MarkEmailDigestReadAsync(digestId, user, ct);
             if (
-                trialTokens.Count == 1
-                && await screeningLists.ResolveListForTrialAsync(trialTokens[0], ct) is { } listInfo
+                trialToken is not null
+                && await screeningLists.ResolveListForTrialAsync(trialToken, ct) is { } listInfo
             )
             {
                 return Results.LocalRedirect(

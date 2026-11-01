@@ -272,9 +272,9 @@ public sealed class NotificationInboxTests
             AliceEmail
         );
 
-        var trials = await service.MarkEmailDigestReadAsync(digestId, Alice, ct);
+        var trial = await service.MarkEmailDigestReadAsync(digestId, Alice, ct);
 
-        Assert.Equal([TrialA.ToToken()], trials);
+        Assert.Equal(TrialA.ToToken(), trial);
         Assert.True(await IsReadAsync(factory, emailed1));
         Assert.True(await IsReadAsync(factory, emailed2));
         Assert.False(await IsReadAsync(factory, notYetEmailed));
@@ -297,8 +297,8 @@ public sealed class NotificationInboxTests
         );
 
         // e.g. Alice forwarded the email to Bob, who then clicked it.
-        Assert.Empty(await service.MarkEmailDigestReadAsync(digestId, Bob, ct));
-        Assert.Empty(await service.MarkEmailDigestReadAsync(Guid.NewGuid(), Alice, ct));
+        Assert.Null(await service.MarkEmailDigestReadAsync(digestId, Bob, ct));
+        Assert.Null(await service.MarkEmailDigestReadAsync(Guid.NewGuid(), Alice, ct));
         Assert.False(await IsReadAsync(factory, alicesItem));
     }
 

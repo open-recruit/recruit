@@ -323,16 +323,15 @@ public sealed class NotificationSenderService(
         CancellationToken ct
     )
     {
-        var (includedDeliveries, acronyms) = DescribeIncluded(deliveries, due);
-        if (includedDeliveries.Count == 0)
+        var (includedDeliveries, acronym) = DescribeIncluded(deliveries, due);
+        if (acronym is null)
         {
             return;
         }
 
-        var subjectAcronym = acronyms.Count == 1 ? acronyms[0] : $"{acronyms.Count} trials";
-        var subject = string.Format(mailerOptions.Value.SubjectTemplate, subjectAcronym);
+        var subject = string.Format(mailerOptions.Value.SubjectTemplate, acronym);
         var digestId = Guid.NewGuid();
-        var html = RenderHtml(includedDeliveries.Count, acronyms, EmailDigestLink(digestId));
+        var html = RenderHtml(includedDeliveries.Count, acronym, EmailDigestLink(digestId));
 
         var sendStart = Stopwatch.GetTimestamp();
         try
@@ -371,15 +370,16 @@ public sealed class NotificationSenderService(
 
     /// <summary>
     /// The deliveries a digest can be written for - those whose event is known and whose trial's
-    /// screening list still resolves - and the distinct acronyms of their trials.
+    /// screening list still resolves - and that trial's acronym (null if there are none). They are
+    /// all one subscription's, and a subscription is to one trial, so there is only ever one.
     /// </summary>
-    private (List<NotificationDelivery> Included, List<string> Acronyms) DescribeIncluded(
+    private (List<NotificationDelivery> Included, string? Acronym) DescribeIncluded(
         List<NotificationDelivery> deliveries,
         DueDeliveries due
     )
     {
         var included = new List<NotificationDelivery>();
-        var acronyms = new List<string>();
+        string? acronym = null;
         foreach (var delivery in deliveries)
         {
             if (!due.Events.TryGetValue(delivery.NotificationEventId, out var notificationEvent))
@@ -402,11 +402,11 @@ public sealed class NotificationSenderService(
                 continue;
             }
 
-            acronyms.Add(listInfo.Value.StudyAcronym);
+            acronym ??= listInfo.Value.StudyAcronym;
             included.Add(delivery);
         }
 
-        return (included, [.. acronyms.Distinct()]);
+        return (included, acronym);
     }
 
     /// <summary>Removes the deliveries that have now failed to send for longer than MaxDeliveryAge.</summary>
@@ -457,7 +457,7 @@ public sealed class NotificationSenderService(
         const string sampleAcronym = "TEST-TRIAL";
 
         var subject = "[Test] " + string.Format(mailerOptions.Value.SubjectTemplate, sampleAcronym);
-        var html = RenderHtml(1, [sampleAcronym], EmailDigestLink(Guid.NewGuid()));
+        var html = RenderHtml(1, sampleAcronym, EmailDigestLink(Guid.NewGuid()));
 
         await using var batch = await channel.BeginBatchAsync(protocolLog, ct);
         await batch.SendAsync(recipientEmail, subject, html, ct);
@@ -480,11 +480,11 @@ public sealed class NotificationSenderService(
     /// </summary>
     private static string RenderHtml(
         int numNewSubjects,
-        IReadOnlyList<string> studyAcronyms,
+        string studyAcronym,
         string screeningListLink
     )
     {
-        var model = new DigestTemplateModel(numNewSubjects, studyAcronyms, screeningListLink);
+        var model = new DigestTemplateModel(numNewSubjects, studyAcronym, screeningListLink);
         var context = new TemplateContext(model, DigestTemplateOptions);
         var mjml = DigestTemplate.Render(context, HtmlEncoder.Default);
 
@@ -529,7 +529,7 @@ public sealed class NotificationSenderService(
 
     private sealed record DigestTemplateModel(
         int NumNewSubjects,
-        IReadOnlyList<string> StudyAcronyms,
+        string StudyAcronym,
         string ScreeningListLink
     );
 }
