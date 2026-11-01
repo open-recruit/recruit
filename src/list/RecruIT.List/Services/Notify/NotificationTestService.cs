@@ -32,7 +32,8 @@ public sealed class NotificationTestService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     IRecurringJobManager recurringJobManager,
     IOptions<NotificationTestingOptions> options,
-    IStringLocalizer<SharedResources> localizer
+    IStringLocalizer<SharedResources> localizer,
+    AdminRoles adminRoles
 )
 {
     /// <summary>
@@ -42,7 +43,7 @@ public sealed class NotificationTestService(
     private const int MaxRestoreAttempts = 3;
 
     public bool IsAvailable(ClaimsPrincipal user) =>
-        options.Value.Enabled && TrialAccessService.IsAdmin(user);
+        options.Value.Enabled && adminRoles.IsAdmin(user);
 
     public async Task<int> CountSubscribersAsync(
         TrialIdentifier trialIdentifier,

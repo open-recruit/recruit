@@ -2,6 +2,7 @@ using System.Security.Claims;
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
 using RecruIT.List.Models;
+using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Fhir;
 using static RecruIT.List.Tests.TestUsers;
 using FhirList = Hl7.Fhir.Model.List;
@@ -21,7 +22,8 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         new(
             fhir.CreateClientFactory(),
             new FakeStringLocalizer(),
-            NullLogger<EligibilityCriteriaService>.Instance
+            NullLogger<EligibilityCriteriaService>.Instance,
+            AdminRoles.Default
         );
 
     /// <summary>Titles derive the resources' ids, so each test's must be its own.</summary>

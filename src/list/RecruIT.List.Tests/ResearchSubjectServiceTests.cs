@@ -36,7 +36,8 @@ public sealed class ResearchSubjectServiceTests(FhirServerFixture fhir) : IDispo
         var access = new TrialAccessService(
             _db,
             new FakeStringLocalizer(),
-            NullLogger<TrialAccessService>.Instance
+            NullLogger<TrialAccessService>.Instance,
+            AdminRoles.Default
         );
         var notes = new ScreeningNoteService(
             _db,

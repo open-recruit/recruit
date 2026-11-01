@@ -8,6 +8,7 @@ using RecruIT.List.Data.Entities;
 using RecruIT.List.Models;
 using RecruIT.List.Options;
 using RecruIT.List.Services;
+using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Notify;
 using static RecruIT.List.Tests.TestUsers;
 using FhirList = Hl7.Fhir.Model.List;
@@ -56,7 +57,8 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
             Microsoft.Extensions.Options.Options.Create(
                 new NotificationTestingOptions { Enabled = enabled }
             ),
-            new FakeStringLocalizer()
+            new FakeStringLocalizer(),
+            AdminRoles.Default
         );
     }
 

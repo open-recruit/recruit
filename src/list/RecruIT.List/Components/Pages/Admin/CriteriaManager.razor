@@ -1,6 +1,7 @@
 @page "/admin/criteria"
 @attribute [Authorize]
 @inject EligibilityCriteriaService CriteriaService
+@inject AdminRoles Admins
 @inject ErrorReporter Errors
 @inject BreadcrumbState BreadcrumbState
 @inject DialogService DialogService
@@ -274,7 +275,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _user = await AuthStateTask.GetUserAsync();
-        _isAdmin = TrialAccessService.IsAdmin(_user);
+        _isAdmin = Admins.IsAdmin(_user);
 
         BreadcrumbState.Set(
             new BreadcrumbItem(Localizer["App.Common.AllTrialsBreadcrumb"], "/"),

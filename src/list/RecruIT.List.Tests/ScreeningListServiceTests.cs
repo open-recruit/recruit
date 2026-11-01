@@ -29,7 +29,8 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
             new TrialAccessService(
                 _db,
                 new FakeStringLocalizer(),
-                NullLogger<TrialAccessService>.Instance
+                NullLogger<TrialAccessService>.Instance,
+                AdminRoles.Default
             ),
             new FakeStringLocalizer(),
             NullLogger<ScreeningListService>.Instance
@@ -367,7 +368,8 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
             new TrialAccessService(
                 _db,
                 new FakeStringLocalizer(),
-                NullLogger<TrialAccessService>.Instance
+                NullLogger<TrialAccessService>.Instance,
+                AdminRoles.Default
             ),
             new FakeStringLocalizer(),
             log

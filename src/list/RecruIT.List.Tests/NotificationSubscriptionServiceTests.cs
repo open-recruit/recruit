@@ -64,7 +64,8 @@ public sealed class NotificationSubscriptionServiceTests(PostgresFixture postgre
             new TrialAccessService(
                 _db,
                 new FakeStringLocalizer(),
-                NullLogger<TrialAccessService>.Instance
+                NullLogger<TrialAccessService>.Instance,
+                AdminRoles.Default
             )
         );
 

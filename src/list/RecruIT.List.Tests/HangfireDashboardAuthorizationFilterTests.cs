@@ -4,6 +4,7 @@ using Hangfire.Dashboard;
 using Hangfire.Storage;
 using Microsoft.AspNetCore.Http;
 using Microsoft.Extensions.DependencyInjection;
+using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Notify;
 using static RecruIT.List.Tests.TestUsers;
 
@@ -12,7 +13,7 @@ namespace RecruIT.List.Tests;
 public sealed class HangfireDashboardAuthorizationFilterTests
 {
     private static bool Authorize(bool authEnabled, ClaimsPrincipal user) =>
-        new HangfireDashboardAuthorizationFilter(authEnabled).Authorize(
+        new HangfireDashboardAuthorizationFilter(authEnabled, AdminRoles.Default).Authorize(
             new AspNetCoreDashboardContext(
                 new UnusedJobStorage(),
                 new DashboardOptions(),

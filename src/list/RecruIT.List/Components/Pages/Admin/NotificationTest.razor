@@ -4,6 +4,7 @@
 @using System.Text
 @using MailKit.Net.Smtp
 @inject NotificationSenderService SenderService
+@inject AdminRoles Admins
 @inject ErrorReporter Errors
 @inject NotificationTestService TestService
 @inject NotificationSubscriptionService SubscriptionService
@@ -256,7 +257,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _user = await AuthStateTask.GetUserAsync();
-        _isAdmin = TrialAccessService.IsAdmin(_user);
+        _isAdmin = Admins.IsAdmin(_user);
         _recipientEmail = _user.GetEmail() ?? string.Empty;
 
         BreadcrumbState.Set(

@@ -112,11 +112,10 @@ var fhirBaseUrl =
     ?? throw new InvalidOperationException("FhirServer:BaseUrl must be configured.");
 var authEnabled = builder.Configuration.GetValue<bool>("Auth:Enabled");
 
-// Read once at startup rather than threading IOptions<AuthOptions> through every call site.
-if (AuthOptions.ReadAdminRoles(builder.Configuration) is { } adminRoles)
-{
-    TrialAccessService.AdminRoles = adminRoles;
-}
+// Built once from the settings (including the deprecated single-role one, see AuthOptions) and
+// injected wherever admin is checked, so they can't disagree.
+var adminRoles = new AdminRoles(AuthOptions.ReadAdminRoles(builder.Configuration));
+builder.Services.AddSingleton(adminRoles);
 
 var appDbConnectionStringBuilder = new NpgsqlConnectionStringBuilder(
     builder.Configuration.GetConnectionString("AppDb")
@@ -218,7 +217,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddCascadingAuthenticationState();
 builder.Services.AddAuthorizationCore(options =>
 {
-    options.AddPolicy("Admin", policy => policy.RequireRole(TrialAccessService.AdminRoles));
+    options.AddPolicy(AuthPolicies.Admin, policy => policy.RequireRole(adminRoles.Roles));
 });
 
 if (!authEnabled)
@@ -403,7 +402,16 @@ app.UseAuthorization();
 
 app.UseHangfireDashboard(
     "/hangfire",
-    new DashboardOptions { Authorization = [new HangfireDashboardAuthorizationFilter(authEnabled)] }
+    new DashboardOptions
+    {
+        Authorization =
+        [
+            new HangfireDashboardAuthorizationFilter(
+                authEnabled,
+                app.Services.GetRequiredService<AdminRoles>()
+            ),
+        ],
+    }
 );
 
 app.MapHealthChecks("/livez", new HealthCheckOptions { Predicate = _ => false });

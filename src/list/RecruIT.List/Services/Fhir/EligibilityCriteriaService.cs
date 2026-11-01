@@ -19,7 +19,8 @@ namespace RecruIT.List.Services.Fhir;
 public sealed class EligibilityCriteriaService(
     FhirClientFactory clientFactory,
     IStringLocalizer<SharedResources> localizer,
-    ILogger<EligibilityCriteriaService> logger
+    ILogger<EligibilityCriteriaService> logger,
+    AdminRoles adminRoles
 )
 {
     /// <summary>
@@ -310,7 +311,7 @@ public sealed class EligibilityCriteriaService(
 
     private void EnsureAdmin(ClaimsPrincipal user)
     {
-        if (!TrialAccessService.IsAdmin(user))
+        if (!adminRoles.IsAdmin(user))
         {
             throw new UnauthorizedAccessException(localizer["App.Errors.NotAuthorizedAdminOnly"]);
         }

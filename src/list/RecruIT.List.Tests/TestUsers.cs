@@ -42,7 +42,7 @@ internal static class TestUsers
 
         if (isAdmin)
         {
-            claims.Add(new Claim("role", TrialAccessService.AdminRoles[0]));
+            claims.Add(new Claim("role", AdminRoles.DefaultRole));
         }
 
         if (role is not null)

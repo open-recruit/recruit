@@ -17,7 +17,8 @@ namespace RecruIT.List.Services.Access;
 public sealed class DevBypassAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
-    UrlEncoder encoder
+    UrlEncoder encoder,
+    AdminRoles adminRoles
 ) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "DevBypass";
@@ -31,7 +32,7 @@ public sealed class DevBypassAuthenticationHandler(
                 new Claim("preferred_username", "dev-admin"),
                 new Claim("email", "dev-admin@localhost"),
                 new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true"),
-                .. TrialAccessService.AdminRoles.Select(role => new Claim("role", role)),
+                .. adminRoles.Roles.Select(role => new Claim("role", role)),
             ],
             authenticationType: SchemeName,
             nameType: "preferred_username",

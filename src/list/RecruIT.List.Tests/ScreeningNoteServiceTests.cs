@@ -7,7 +7,6 @@ using static RecruIT.List.Tests.TestUsers;
 
 namespace RecruIT.List.Tests;
 
-[Collection(nameof(TrialAccessRoleCollection))]
 public sealed class ScreeningNoteServiceTests
 {
     private static readonly TrialIdentifier TrialA = new(
@@ -26,7 +25,8 @@ public sealed class ScreeningNoteServiceTests
         var accessService = new TrialAccessService(
             factory,
             new FakeStringLocalizer(),
-            NullLogger<TrialAccessService>.Instance
+            NullLogger<TrialAccessService>.Instance,
+            AdminRoles.Default
         );
         var notes = new ScreeningNoteService(
             factory,

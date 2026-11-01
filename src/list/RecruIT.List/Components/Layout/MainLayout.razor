@@ -48,7 +48,7 @@
                     </BbSidebarMenuItem>
                 </BbSidebarMenu>
             </BbSidebarGroup>
-            <AuthorizeView Policy="Admin">
+            <AuthorizeView Policy="@AuthPolicies.Admin">
                 <BbSidebarGroup>
                     <BbSidebarGroupLabel>@Localizer["App.Nav.GroupAdmin"]</BbSidebarGroupLabel>
                     <BbSidebarMenu>

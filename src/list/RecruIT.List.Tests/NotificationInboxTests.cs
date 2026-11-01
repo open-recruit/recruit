@@ -48,7 +48,8 @@ public sealed class NotificationInboxTests
         var access = new TrialAccessService(
             factory,
             new FakeStringLocalizer(),
-            NullLogger<TrialAccessService>.Instance
+            NullLogger<TrialAccessService>.Instance,
+            AdminRoles.Default
         );
         return (new NotificationSubscriptionService(factory, access), factory);
     }

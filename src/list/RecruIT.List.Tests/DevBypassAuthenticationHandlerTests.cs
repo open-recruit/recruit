@@ -8,16 +8,15 @@ using RecruIT.List.Services.Auth;
 
 namespace RecruIT.List.Tests;
 
-// Reads and, in one test, sets the TrialAccessService.AdminRoles static - see TrialAccessServiceTests.
-[Collection(nameof(TrialAccessRoleCollection))]
 public sealed class DevBypassAuthenticationHandlerTests
 {
-    private static async Task<AuthenticateResult> AuthenticateAsync()
+    private static async Task<AuthenticateResult> AuthenticateAsync(AdminRoles? adminRoles = null)
     {
         var handler = new DevBypassAuthenticationHandler(
             new StaticOptionsMonitor(),
             NullLoggerFactory.Instance,
-            UrlEncoder.Default
+            UrlEncoder.Default,
+            adminRoles ?? AdminRoles.Default
         );
         await handler.InitializeAsync(
             new AuthenticationScheme(
@@ -38,7 +37,7 @@ public sealed class DevBypassAuthenticationHandlerTests
         Assert.True(result.Succeeded);
         var user = result.Principal;
         Assert.True(user.Identity?.IsAuthenticated);
-        Assert.True(TrialAccessService.IsAdmin(user));
+        Assert.True(AdminRoles.Default.IsAdmin(user));
         Assert.Equal(("dev-admin", "dev-admin@localhost"), user.GetUserKeys());
         Assert.Equal("dev-admin", user.GetDisplayName());
     }
@@ -46,20 +45,13 @@ public sealed class DevBypassAuthenticationHandlerTests
     [Fact]
     public async Task The_dev_admin_holds_every_configured_admin_role()
     {
-        var originalAdminRoles = TrialAccessService.AdminRoles;
-        try
-        {
-            TrialAccessService.AdminRoles = ["recruit-admin", "study-admin"];
+        var roles = new AdminRoles(["recruit-admin", "study-admin"]);
 
-            var user = (await AuthenticateAsync()).Principal!;
+        var user = (await AuthenticateAsync(roles)).Principal!;
 
-            Assert.True(user.IsInRole("recruit-admin"));
-            Assert.True(user.IsInRole("study-admin"));
-        }
-        finally
-        {
-            TrialAccessService.AdminRoles = originalAdminRoles;
-        }
+        Assert.True(user.IsInRole("recruit-admin"));
+        Assert.True(user.IsInRole("study-admin"));
+        Assert.True(roles.IsAdmin(user));
     }
 
     private sealed class StaticOptionsMonitor : IOptionsMonitor<AuthenticationSchemeOptions>
