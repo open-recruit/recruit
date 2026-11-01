@@ -3,7 +3,7 @@
 @inject NotificationSubscriptionService NotificationSubscriptionService
 @inject ErrorReporter Errors
 @inject NotificationInboxState NotificationInboxState
-@inject ScreeningListService ScreeningListService
+@inject TrialListResolver TrialLists
 @inject BreadcrumbState BreadcrumbState
 @inject NavigationManager Navigation
 @inject ToastService Toast
@@ -99,7 +99,7 @@
             // Each item only carries the trial's stable identifier token - resolve the current
             // List id/acronym once per distinct trial rather than per item, since several items
             // commonly share the same trial.
-            var listInfoByTrial = await ScreeningListService.ResolveListsForTrialsAsync(
+            var listInfoByTrial = await TrialLists.ResolveListsForTrialsAsync(
                 feedItems.Select(f => f.TrialIdentifier)
             );
 

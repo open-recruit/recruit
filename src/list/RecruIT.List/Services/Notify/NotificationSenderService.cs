@@ -31,7 +31,7 @@ namespace RecruIT.List.Services.Notify;
 /// </summary>
 public sealed class NotificationSenderService(
     IDbContextFactory<AppDbContext> dbContextFactory,
-    ScreeningListService screeningListService,
+    TrialListResolver trialListResolver,
     TrialAccessService accessService,
     IOptions<EmailNotificationOptions> mailerOptions,
     IOptions<AuthOptions> authOptions,
@@ -299,7 +299,7 @@ public sealed class NotificationSenderService(
         // share an event's trial too) - resolve each trial's current acronym at most once for this
         // whole tick rather than once per delivery. Where the email's link leads is resolved
         // separately, at click time (see Program.cs's /notifications/email endpoint).
-        var listInfoByTrial = await screeningListService.ResolveListsForTrialsAsync(
+        var listInfoByTrial = await trialListResolver.ResolveListsForTrialsAsync(
             deliveries
                 .Where(d => events.ContainsKey(d.NotificationEventId))
                 .Select(d => events[d.NotificationEventId].TrialIdentifier),

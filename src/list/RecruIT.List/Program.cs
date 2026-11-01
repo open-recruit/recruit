@@ -293,6 +293,7 @@ builder.Services.AddScoped<TrialAccessService>();
 builder.Services.AddSingleton<FhirClientFactory>();
 builder.Services.AddSingleton<RecruitMetrics>();
 builder.Services.AddScoped<ScreeningListService>();
+builder.Services.AddScoped<TrialListResolver>();
 builder.Services.AddScoped<ResearchSubjectService>();
 builder.Services.AddScoped<ScreeningNoteService>();
 builder.Services.AddScoped<PatientRecordService>();
@@ -506,14 +507,14 @@ app.MapGet(
             Guid digestId,
             ClaimsPrincipal user,
             NotificationSubscriptionService notifications,
-            ScreeningListService screeningLists,
+            TrialListResolver trialLists,
             CancellationToken ct
         ) =>
         {
             var trialToken = await notifications.MarkEmailDigestReadAsync(digestId, user, ct);
             if (
                 trialToken is not null
-                && await screeningLists.ResolveListForTrialAsync(trialToken, ct) is { } listInfo
+                && await trialLists.ResolveListForTrialAsync(trialToken, ct) is { } listInfo
             )
             {
                 return Results.LocalRedirect(

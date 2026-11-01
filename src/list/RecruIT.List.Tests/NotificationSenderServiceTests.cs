@@ -40,16 +40,9 @@ public sealed class NotificationSenderServiceTests(FhirServerFixture fhir, Postg
     private NotificationSenderService CreateService(INotificationChannel? channel = null) =>
         new(
             _db,
-            new ScreeningListService(
+            new TrialListResolver(
                 fhir.CreateClientFactory(),
-                new TrialAccessService(
-                    _db,
-                    new FakeStringLocalizer(),
-                    NullLogger<TrialAccessService>.Instance,
-                    AdminRoles.Default
-                ),
-                new FakeStringLocalizer(),
-                NullLogger<ScreeningListService>.Instance
+                NullLogger<TrialListResolver>.Instance
             ),
             new TrialAccessService(
                 _db,

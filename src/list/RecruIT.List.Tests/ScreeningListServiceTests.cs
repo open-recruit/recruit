@@ -338,57 +338,6 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
     }
 
     [Fact]
-    public async Task A_trial_identifier_resolves_to_its_list()
-    {
-        var (study, list) = await SeedTrialAsync("RESOLVE", Status.Candidate);
-        var token = FhirTestData.TrialOf(study).ToToken();
-        var unknown = new TrialIdentifier(
-            FhirTestData.TrialIdentifierSystem,
-            _data.Id("unknown")
-        ).ToToken();
-
-        var resolved = await CreateService()
-            .ResolveListsForTrialsAsync(
-                [token, unknown, token],
-                TestContext.Current.CancellationToken
-            );
-
-        Assert.Equal(2, resolved.Count);
-        Assert.Equal((list.Id!, "RESOLVE"), resolved[token]);
-        Assert.Null(resolved[unknown]);
-    }
-
-    [Fact]
-    public async Task A_failure_resolving_a_trial_is_logged_and_still_reaches_the_caller()
-    {
-        var log = new CapturingLogger<ScreeningListService>();
-        var service = new ScreeningListService(
-            fhir.CreateClientFactory(() => new FailingHandler()),
-            new TrialAccessService(
-                _db,
-                new FakeStringLocalizer(),
-                NullLogger<TrialAccessService>.Instance,
-                AdminRoles.Default
-            ),
-            new FakeStringLocalizer(),
-            log
-        );
-        var token = new TrialIdentifier(
-            FhirTestData.TrialIdentifierSystem,
-            "unreachable"
-        ).ToToken();
-
-        await Assert.ThrowsAnyAsync<Exception>(() =>
-            service.ResolveListForTrialAsync(token, TestContext.Current.CancellationToken)
-        );
-
-        var entry = Assert.Single(log.Entries);
-        Assert.Equal(Microsoft.Extensions.Logging.LogLevel.Error, entry.Level);
-        Assert.NotNull(entry.Exception);
-        Assert.Contains(token, entry.Message);
-    }
-
-    [Fact]
     public async Task More_lists_than_fit_on_a_page_are_all_listed_though_the_server_repeats_includes()
     {
         // The query asks for 100 lists a page and pulls in each one's study, which the server then
@@ -413,14 +362,5 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
 
         Assert.Equal(lists, trials.Count(t => t.StudyId == study.Id));
         Assert.Equal(lists, overview.Single(o => o.PatientId == patient.Id).Trials.Count);
-    }
-
-    /// <summary>A FHIR server that can't be reached.</summary>
-    private sealed class FailingHandler : DelegatingHandler
-    {
-        protected override Task<HttpResponseMessage> SendAsync(
-            HttpRequestMessage request,
-            CancellationToken cancellationToken
-        ) => throw new HttpRequestException("connection refused");
     }
 }

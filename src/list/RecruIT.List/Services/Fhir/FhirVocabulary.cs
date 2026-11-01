@@ -68,6 +68,9 @@ public static class FhirVocabulary
 
     public const string ListStatusCurrent = "current";
 
+    /// <summary>ResearchSubject.status of a patient who has been recommended but not looked at yet.</summary>
+    public const string SubjectStatusCandidate = "candidate";
+
     public static readonly string[] RecruitedStatuses = ["on-study"];
     public static readonly string[] NotRecruitedStatuses = ["ineligible", "withdrawn"];
 }
