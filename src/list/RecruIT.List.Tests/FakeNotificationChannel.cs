@@ -9,6 +9,8 @@ internal sealed class FakeNotificationChannel : INotificationChannel
 
     public List<string> SentTo { get; } = [];
 
+    public List<string> Subjects { get; } = [];
+
     /// <summary>Called with the recipient and the number of this send (1-based) before it counts as sent.</summary>
     public Action<string, int>? OnSend { get; set; }
 
@@ -30,6 +32,7 @@ internal sealed class FakeNotificationChannel : INotificationChannel
         {
             channel.OnSend?.Invoke(recipient, ++channel._sends);
             channel.SentTo.Add(recipient);
+            channel.Subjects.Add(subject);
             return Task.CompletedTask;
         }
 

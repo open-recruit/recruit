@@ -129,6 +129,35 @@ public sealed class NotificationSenderServiceTests(FhirServerFixture fhir, Postg
         return (subscription.Id, delivery.Id);
     }
 
+    /// <summary>Another pending email delivery, for a new event, to a subscription already queued.</summary>
+    private async Task<Guid> QueueAnotherAsync(Guid subscriptionId, string trial, string email)
+    {
+        var notification = new NotificationEvent
+        {
+            Id = Guid.NewGuid(),
+            TrialIdentifier = trial,
+            PatientReference = $"ResearchSubject/{Guid.NewGuid():N}",
+            PatientDisplayName = "Max Mustermann",
+            OccurredAt = DateTimeOffset.UtcNow.AddMinutes(-30),
+            DedupeKey = Guid.NewGuid().ToString(),
+        };
+        var delivery = new NotificationDelivery
+        {
+            Id = Guid.NewGuid(),
+            NotificationEventId = notification.Id,
+            NotificationSubscriptionId = subscriptionId,
+            SubjectId = $"{email}-sub",
+            Email = email,
+            Channel = NotificationChannel.Email,
+            ScheduledFor = notification.OccurredAt,
+        };
+        await using var db = _db.CreateDbContext();
+        db.NotificationEvents.Add(notification);
+        db.NotificationDeliveries.Add(delivery);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+        return delivery.Id;
+    }
+
     private async Task<bool> IsSentAsync(Guid delivery)
     {
         await using var db = _db.CreateDbContext();
@@ -155,6 +184,54 @@ public sealed class NotificationSenderServiceTests(FhirServerFixture fhir, Postg
 
         await CreateService().SendDueAsync(TestContext.Current.CancellationToken);
         Assert.Equal(2, _channel.SentTo.Count); // nothing is sent twice
+    }
+
+    [Fact]
+    public async Task Events_queued_for_one_subscriber_become_one_email_naming_the_trial()
+    {
+        var trial = await SeedTrialAsync();
+        var (subscription, first) = await QueueAsync(trial, "alice@example.org");
+        var second = await QueueAnotherAsync(subscription, trial, "alice@example.org");
+
+        await CreateService().SendDueAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["alice@example.org"], _channel.SentTo);
+        Assert.Equal(["New patients for SEND"], _channel.Subjects);
+        Assert.True(await IsSentAsync(first));
+        Assert.True(await IsSentAsync(second));
+        await using var db = _db.CreateDbContext();
+        var digests = await db
+            .NotificationDeliveries.AsNoTracking()
+            .Select(d => d.EmailDigestId)
+            .Distinct()
+            .ToListAsync(TestContext.Current.CancellationToken);
+        Assert.NotNull(Assert.Single(digests)); // both deliveries belong to the same digest
+    }
+
+    [Fact]
+    public async Task Deliveries_of_a_subscription_that_was_removed_are_dropped_not_sent()
+    {
+        var trial = await SeedTrialAsync();
+        var (subscription, orphan) = await QueueAsync(trial, "gone@example.org");
+        var (_, kept) = await QueueAsync(trial, "kept@example.org");
+        await using (var db = _db.CreateDbContext())
+        {
+            await db
+                .NotificationSubscriptions.Where(s => s.Id == subscription)
+                .ExecuteDeleteAsync(TestContext.Current.CancellationToken);
+        }
+
+        await CreateService().SendDueAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["kept@example.org"], _channel.SentTo);
+        Assert.True(await IsSentAsync(kept));
+        await using var verify = _db.CreateDbContext();
+        Assert.False(
+            await verify.NotificationDeliveries.AnyAsync(
+                d => d.Id == orphan,
+                TestContext.Current.CancellationToken
+            )
+        );
     }
 
     [Fact]
