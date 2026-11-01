@@ -1,5 +1,17 @@
 # Changelog
 
+## [11.1.0](https://github.com/open-recruit/recruit/compare/v11.0.2...v11.1.0) (2026-11-01)
+
+
+### Features
+
+* **list:** allow multiple admin roles via Auth:AdminRoles ([#687](https://github.com/open-recruit/recruit/issues/687)) ([8857b94](https://github.com/open-recruit/recruit/commit/8857b94fa10c6703f1fe7da2d12db43d209b55af))
+
+
+### Bug Fixes
+
+* de-sloppify to increase test coverage and fix minor bugs ([#689](https://github.com/open-recruit/recruit/issues/689)) ([b327bf3](https://github.com/open-recruit/recruit/commit/b327bf3ac7b6da4d4ce3cfd45023b0948c6847d3))
+
 ## [11.0.2](https://github.com/open-recruit/recruit/compare/v11.0.1...v11.0.2) (2026-10-27)
 
 
