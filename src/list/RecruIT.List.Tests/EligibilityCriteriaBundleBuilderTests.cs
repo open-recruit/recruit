@@ -234,4 +234,38 @@ public sealed class EligibilityCriteriaBundleBuilderTests
         );
         Assert.Equal([false, true], Single<Group>(bundle).Characteristic.Select(c => c.Exclude));
     }
+
+    /// <summary>
+    /// The id of the empty screening List must be the one query-sql-on-fhir derives for the same
+    /// trial identifier (EligibilityBundleBuilderTest in src/query-sql-on-fhir asserts this same
+    /// constant through the real IdUtils.fromIdentifier), or a List created here would be
+    /// duplicated by the next poll instead of updated. The value is SHA-256 of "system|value",
+    /// computed independently: printf '%s' 'https://openrecruit.dev/fhir/identifiers/screening-list-id|HFR-2026' | sha256sum
+    /// </summary>
+    [Fact]
+    public void The_empty_screening_list_has_the_id_the_query_module_derives()
+    {
+        var existing = new ResearchStudy { Id = "existing-study", Title = "Existing" };
+        existing.Identifier.Add(new Identifier("https://example.org/trials", "HFR-2026"));
+        var draft = new ResearchStudyDraft
+        {
+            Title = "ignored",
+            ExistingStudyId = existing.Id,
+            CreateEmptyScreeningList = true,
+        };
+
+        var bundle = EligibilityCriteriaBundleBuilder.Build(draft, [], existing);
+
+        var list = Single<FhirList>(bundle);
+        const string expected = "bacb8e16a3505eda0afc5c1f4cb800a5644e114f5d7dafcf420696853a49f419";
+        Assert.Equal(expected, list.Id);
+        Assert.Equal(
+            $"List/{expected}",
+            bundle.Entry.Single(e => e.Resource is FhirList).Request!.Url
+        );
+        Assert.Equal(
+            "https://openrecruit.dev/fhir/identifiers/screening-list-id",
+            FhirVocabulary.UrlScreeningListIdentifier
+        );
+    }
 }
