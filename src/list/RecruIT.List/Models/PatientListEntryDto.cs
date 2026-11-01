@@ -1,3 +1,5 @@
+using RecruIT.List.Services.Fhir;
+
 namespace RecruIT.List.Models;
 
 public sealed class PatientListEntryDto
@@ -6,7 +8,7 @@ public sealed class PatientListEntryDto
 
     /// <summary>
     /// ResearchSubject's business identifier as "system|value" (see
-    /// RecruIT.List.Services.Fhir.FhirConstants.UrlResearchSubjectIdentifier), null if the subject predates that identifier
+    /// RecruIT.List.Services.Fhir.FhirVocabulary.UrlResearchSubjectIdentifier), null if the subject predates that identifier
     /// being set. Screening notes are keyed on this, not ResearchSubjectId - see
     /// ScreeningNoteService.
     /// </summary>

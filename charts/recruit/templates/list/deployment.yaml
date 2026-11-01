@@ -166,8 +166,8 @@ spec:
             {{- end }}
             - name: Notifications__StalledLeadWindowDays
               value: {{ .notifications.stalledLeadWindowDays | quote }}
-            - name: Notifications__ScanIntervalSeconds
-              value: {{ .notifications.scanIntervalSeconds | quote }}
+            - name: Notifications__ScanSchedule
+              value: {{ .notifications.scanSchedule | quote }}
             - name: Notifications__Testing__Enabled
               value: {{ .notifications.testing.enabled | quote }}
             - name: Notifications__Email__PublicBaseUrl

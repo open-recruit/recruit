@@ -19,13 +19,11 @@ namespace RecruIT.List.Services.Access;
 public sealed class TrialAccessService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     IStringLocalizer<SharedResources> localizer,
-    ILogger<TrialAccessService> logger
+    ILogger<TrialAccessService> logger,
+    AdminRoles adminRoles
 )
 {
-    /// <summary>Set once at startup from Auth:AdminRoles config (see Program.cs).</summary>
-    public static IReadOnlyList<string> AdminRoles { get; set; } = ["admin"];
-
-    public static bool IsAdmin(ClaimsPrincipal user) => AdminRoles.Any(user.IsInRole);
+    public bool IsAdmin(ClaimsPrincipal user) => adminRoles.IsAdmin(user);
 
     /// <summary>
     /// The permission level to use as a fallback for admins - they outrank TrialAdmin without
@@ -152,9 +150,6 @@ public sealed class TrialAccessService(
 
     /// <summary>Only admins may retire/reactivate a List (matches list-old's createPatchFilter).</summary>
     public bool CanPatchList(ClaimsPrincipal user) => IsAdmin(user);
-
-    /// <summary>Only admins may DELETE resources (matches list-old's createDeleteFilter).</summary>
-    public bool CanDelete(ClaimsPrincipal user) => IsAdmin(user);
 
     /// <summary>
     /// Whether this grant belongs to the given user - used to stop a TrialAdmin from editing or

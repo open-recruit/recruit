@@ -1,7 +1,7 @@
 <mjml lang="de">
   <mj-head>
     <mj-title>Neue Rekrutierungsvorschläge | recruIT</mj-title>
-    <mj-preview>{% if NumNewSubjects == 1 %}1 neuer Rekrutierungsvorschlag{% else %}{{ NumNewSubjects }} neue Rekrutierungsvorschläge{% endif %} für {{ StudyAcronyms | join: ", " }}</mj-preview>
+    <mj-preview>{% if NumNewSubjects == 1 %}1 neuer Rekrutierungsvorschlag{% else %}{{ NumNewSubjects }} neue Rekrutierungsvorschläge{% endif %} für {{ StudyAcronym }}</mj-preview>
     <mj-attributes>
       <mj-all font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif" />
       <mj-section padding="0" />
@@ -45,7 +45,7 @@
           </mj-text>
 
           <mj-text align="center" line-height="2.2" padding="10px 36px 0">
-            {% for acronym in StudyAcronyms %}<span style="display: inline-block; background-color: #d9e6ee; color: #0f4866; border-radius: 999px; padding: 2px 14px; margin: 0 2px; font-size: 14px; font-weight: 600; line-height: 1.8;">{{ acronym }}</span> {% endfor %}
+            <span style="display: inline-block; background-color: #d9e6ee; color: #0f4866; border-radius: 999px; padding: 2px 14px; margin: 0 2px; font-size: 14px; font-weight: 600; line-height: 1.8;">{{ StudyAcronym }}</span>
           </mj-text>
         </mj-column>
       </mj-section>
@@ -56,11 +56,11 @@
             Hallo,
           </mj-text>
           <mj-text padding="8px 36px 0">
-            recruIT hat neue mögliche Teilnehmende für {% if StudyAcronyms.size == 1 %}Ihre abonnierte Studie{% else %}Ihre abonnierten Studien{% endif %} gefunden. Bitte prüfen Sie die Vorschläge in {% if StudyAcronyms.size == 1 %}der Screeningliste{% else %}den Screeninglisten{% endif %}.
+            recruIT hat neue mögliche Teilnehmende für Ihre abonnierte Studie gefunden. Bitte prüfen Sie die Vorschläge in der Screeningliste.
           </mj-text>
 
           <mj-button href="{{ ScreeningListLink }}" background-color="#1a6289" color="#ffffff" font-size="15px" font-weight="600" border-radius="8px" inner-padding="14px 32px" padding="28px 36px 0">
-            {% if StudyAcronyms.size == 1 %}Screeningliste öffnen{% else %}Zur Studienübersicht{% endif %} &rarr;
+            Screeningliste öffnen &rarr;
           </mj-button>
 
           <mj-text align="center" font-size="12px" line-height="1.5" color="#5a6573" padding="16px 36px 0" css-class="muted-link">

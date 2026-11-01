@@ -1,6 +1,5 @@
 using Hl7.Fhir.Model;
 using RecruIT.List.Services.Fhir;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 
 namespace RecruIT.List.Tests;
 
@@ -10,8 +9,8 @@ public sealed class PatientDisplayNameTests
         new()
         {
             Type = new CodeableConcept(
-                ListFhirConstants.SystemIdentifierType,
-                ListFhirConstants.IdentifierTypeMedicalRecordNumber
+                FhirVocabulary.SystemIdentifierType,
+                FhirVocabulary.IdentifierTypeMedicalRecordNumber
             ),
             Value = value,
         };

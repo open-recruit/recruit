@@ -372,12 +372,12 @@ public sealed class NotificationSubscriptionService(
 
     /// <summary>
     /// Marks read the caller's in-app items for exactly the events one sent digest email covered
-    /// (see NotificationDelivery.EmailDigestId), and returns those events' distinct trial
-    /// identifier tokens so the caller can decide where to send the user next. A digest that
-    /// doesn't belong to the caller - a forwarded email, or a guessed id - matches nothing, so it
-    /// changes nothing and returns an empty list, indistinguishable from an unknown id.
+    /// (see NotificationDelivery.EmailDigestId), and returns the digest's trial identifier token
+    /// so the caller can send the user there. A digest that doesn't belong to the caller - a
+    /// forwarded email, or a guessed id - matches nothing, so it changes nothing and returns null,
+    /// indistinguishable from an unknown id.
     /// </summary>
-    public async Task<IReadOnlyList<string>> MarkEmailDigestReadAsync(
+    public async Task<string?> MarkEmailDigestReadAsync(
         Guid digestId,
         ClaimsPrincipal user,
         CancellationToken ct = default
@@ -386,7 +386,7 @@ public sealed class NotificationSubscriptionService(
         var (subjectId, _) = user.GetUserKeys();
         if (subjectId is null)
         {
-            return [];
+            return null;
         }
 
         await using var db = await dbContextFactory.CreateDbContextAsync(ct);
@@ -401,7 +401,7 @@ public sealed class NotificationSubscriptionService(
             .ToListAsync(ct);
         if (emailed.Count == 0)
         {
-            return [];
+            return null;
         }
 
         // A digest is always one subscription's deliveries (NotificationSenderService groups by
@@ -423,8 +423,7 @@ public sealed class NotificationSubscriptionService(
             .NotificationEvents.AsNoTracking()
             .Where(e => eventIds.Contains(e.Id))
             .Select(e => e.TrialIdentifier)
-            .Distinct()
-            .ToListAsync(ct);
+            .FirstOrDefaultAsync(ct);
     }
 
     /// <summary>

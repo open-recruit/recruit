@@ -7,8 +7,10 @@ import io.github.miracum.recruit.Recruit;
 import java.nio.charset.StandardCharsets;
 import java.util.Date;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
 import org.hl7.fhir.r4.model.Bundle;
+import org.hl7.fhir.r4.model.ListResource;
 import org.hl7.fhir.r4.model.ResearchStudy;
 import org.hl7.fhir.r4.model.ResearchSubject;
 import org.junit.jupiter.api.Test;
@@ -139,6 +141,29 @@ class EligibilityBundleBuilderTest {
     // Same deterministic hash used as the resource's own id in update-as-create mode - see
     // EligibilityBundleBuilder.researchSubjectResourceId.
     assertThat(identifier.getValue()).isEqualTo(subject.getIdElement().getIdPart());
+  }
+
+  /**
+   * The id the screening List is written under must be the one the list module derives for the same
+   * trial identifier when it creates an empty List (EligibilityCriteriaBundleBuilder in
+   * src/list/RecruIT.List) - otherwise a List created in its UI would be duplicated by the next
+   * poll instead of updated. The expected value below is the SHA-256 of "system|value", computed
+   * independently ({@code printf '%s'
+   * 'https://openrecruit.dev/fhir/identifiers/screening-list-id|HFR-2026' | sha256sum});
+   * EligibilityCriteriaBundleBuilderTests in the list module asserts the same constant.
+   */
+  @Test
+  void buildScreeningListBundle_withUpdateAsCreate_usesTheIdTheListModuleDerives() {
+    var sut = new EligibilityBundleBuilder(true, 500);
+    var study = studyWithId("study-1");
+    study.addIdentifier().setSystem("https://example.org/trials").setValue("HFR-2026");
+
+    var bundle = sut.buildScreeningListBundle(study, List.of(), Optional.empty());
+
+    var list = (ListResource) bundle.getEntryFirstRep().getResource();
+    var expected = "bacb8e16a3505eda0afc5c1f4cb800a5644e114f5d7dafcf420696853a49f419";
+    assertThat(list.getIdElement().getIdPart()).isEqualTo(expected);
+    assertThat(bundle.getEntryFirstRep().getRequest().getUrl()).isEqualTo("List/" + expected);
   }
 
   @Test

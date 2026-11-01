@@ -4,7 +4,7 @@ namespace RecruIT.List.Services.Fhir;
 /// Thrown by the FHIR service layer for any failure (network, server error, timeout) that should
 /// be surfaced to the user as a friendly message rather than a raw exception/stack trace.
 /// </summary>
-public sealed class FhirAccessException : Exception
+public sealed class FhirAccessException : UserFacingException
 {
     public FhirAccessException(string message)
         : base(message) { }

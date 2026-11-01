@@ -14,7 +14,8 @@ namespace RecruIT.List.Services.Auth;
 /// </summary>
 public sealed class OidcEvents(
     IConfiguration configuration,
-    IDbContextFactory<AppDbContext> dbContextFactory
+    IDbContextFactory<AppDbContext> dbContextFactory,
+    ILogger<OidcEvents> logger
 ) : OpenIdConnectEvents
 {
     public override async Task TokenValidated(TokenValidatedContext context)
@@ -22,6 +23,7 @@ public sealed class OidcEvents(
         var principal = context.Principal!;
 
         ApplyGroupRoleMappings(principal);
+        MarkEmailTrust(principal);
         await ProvisionGrantsAsync(principal, context.HttpContext.RequestAborted);
 
         await base.TokenValidated(context);
@@ -53,7 +55,9 @@ public sealed class OidcEvents(
             : "role";
         var existingRoles = identity.FindAll(roleClaimType).Select(c => c.Value).ToHashSet();
 
-        foreach (var groupClaim in identity.FindAll(groupClaimType))
+        // Materialized first: FindAll enumerates the identity's live claim list, which AddClaim
+        // below changes.
+        foreach (var groupClaim in identity.FindAll(groupClaimType).ToList())
         {
             if (mappings.TryGetValue(groupClaim.Value, out var role) && existingRoles.Add(role))
             {
@@ -63,12 +67,58 @@ public sealed class OidcEvents(
     }
 
     /// <summary>
+    /// Records whether the email address can be relied on to belong to this user: the IdP vouches
+    /// for it with "email_verified" - or the deployment accepts it unverified, for an IdP that
+    /// doesn't send the claim (Auth:RequireVerifiedEmail=false). Any such claim already on the
+    /// principal came from the token, not from this decision, so it's dropped first.
+    /// </summary>
+    private void MarkEmailTrust(ClaimsPrincipal principal)
+    {
+        if (principal.Identity is not ClaimsIdentity identity)
+        {
+            return;
+        }
+
+        foreach (
+            var spoofed in identity
+                .FindAll(ClaimsPrincipalExtensions.EmailTrustedClaimType)
+                .ToList()
+        )
+        {
+            identity.RemoveClaim(spoofed);
+        }
+
+        if (string.IsNullOrEmpty(principal.GetEmail()))
+        {
+            return;
+        }
+
+        var verified = identity
+            .FindAll("email_verified")
+            .Any(c => string.Equals(c.Value, "true", StringComparison.OrdinalIgnoreCase));
+        if (
+            verified
+            || !configuration.GetValue($"{AuthOptions.SectionName}:RequireVerifiedEmail", true)
+        )
+        {
+            identity.AddClaim(new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true"));
+            return;
+        }
+
+        logger.LogInformation(
+            "The identity provider hasn't verified the email address of {SubjectId}, so grants "
+                + "given to that address don't apply to them (see Auth:RequireVerifiedEmail)",
+            principal.GetSubjectId()
+        );
+    }
+
+    /// <summary>
     /// Activates any TrialAccessGrant an admin created by email before this person had ever logged
     /// in, by filling in the OIDC "sub" (and a display name) now that we have them.
     /// </summary>
     private async Task ProvisionGrantsAsync(ClaimsPrincipal principal, CancellationToken ct)
     {
-        var email = principal.GetEmail();
+        var email = principal.GetVerifiedEmail();
         if (string.IsNullOrEmpty(email))
         {
             return;

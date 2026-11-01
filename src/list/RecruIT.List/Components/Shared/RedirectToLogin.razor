@@ -1,0 +1,11 @@
+@inject NavigationManager Navigation
+
+@code {
+    /// <summary>
+    /// What AuthorizeRouteView shows a visitor who isn't allowed on the page they navigated to
+    /// within the circuit: a full-page load of the login route, which starts the OIDC challenge,
+    /// as the first request to such a page would have.
+    /// </summary>
+    protected override void OnInitialized() =>
+        Navigation.NavigateTo("/authentication/login", forceLoad: true);
+}

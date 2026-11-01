@@ -2,8 +2,8 @@ using System.Net;
 using System.Net.Http.Headers;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Rest;
+using RecruIT.List.Services.Fhir;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.E2ETests;
@@ -90,11 +90,11 @@ internal static class FhirSeed
             Status = FhirList.ListStatus.Current,
             Mode = ListMode.Working,
             Code = new CodeableConcept(
-                ListFhirConstants.SystemScreeningList,
-                ListFhirConstants.ScreeningListCode
+                FhirVocabulary.SystemScreeningList,
+                FhirVocabulary.ScreeningListCode
             ),
         };
-        list.Extension.Add(new Extension(ListFhirConstants.UrlListBelongsToStudy, study));
+        list.Extension.Add(new Extension(FhirVocabulary.UrlListBelongsToStudy, study));
 
         for (var i = 0; i < Patients.Length; i++)
         {
@@ -123,7 +123,7 @@ internal static class FhirSeed
                     Individual = new ResourceReference($"Patient/{patientId}"),
                     Identifier =
                     [
-                        new Identifier(ListFhirConstants.UrlResearchSubjectIdentifier, subjectId),
+                        new Identifier(FhirVocabulary.UrlResearchSubjectIdentifier, subjectId),
                     ],
                 }
             );

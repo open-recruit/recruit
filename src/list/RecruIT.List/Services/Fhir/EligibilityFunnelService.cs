@@ -1,6 +1,5 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Localization;
-using RecruIT.FhirConstants;
 using RecruIT.List.Models;
 using RecruIT.List.Resources;
 
@@ -20,9 +19,6 @@ public sealed class EligibilityFunnelService(
     ILogger<EligibilityFunnelService> logger
 )
 {
-    private static readonly string TotalPopulationCode =
-        Recruit.CodeSystems.EligibilityFunnelPopulationType.TotalPopulation.Code();
-
     /// <summary>
     /// The study's current funnel steps, in order, or null if none has been published yet (feature
     /// disabled for this deployment, or this study hasn't been polled since it was enabled).
@@ -69,7 +65,8 @@ public sealed class EligibilityFunnelService(
     private static FunnelStepDto ToFunnelStepDto(MeasureReport.PopulationComponent population)
     {
         var isTotalPopulation =
-            population.Code?.Coding?.Any(c => c.Code == TotalPopulationCode) is true;
+            population.Code?.Coding?.Any(c => c.Code == FhirVocabulary.FunnelPopulationTotal)
+            is true;
 
         return new FunnelStepDto
         {

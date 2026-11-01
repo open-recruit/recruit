@@ -1,8 +1,9 @@
 @page "/notifications"
 @attribute [Authorize]
 @inject NotificationSubscriptionService NotificationSubscriptionService
+@inject ErrorReporter Errors
 @inject NotificationInboxState NotificationInboxState
-@inject ScreeningListService ScreeningListService
+@inject TrialListResolver TrialLists
 @inject BreadcrumbState BreadcrumbState
 @inject NavigationManager Navigation
 @inject ToastService Toast
@@ -98,7 +99,7 @@
             // Each item only carries the trial's stable identifier token - resolve the current
             // List id/acronym once per distinct trial rather than per item, since several items
             // commonly share the same trial.
-            var listInfoByTrial = await ScreeningListService.ResolveListsForTrialsAsync(
+            var listInfoByTrial = await TrialLists.ResolveListsForTrialsAsync(
                 feedItems.Select(f => f.TrialIdentifier)
             );
 
@@ -121,9 +122,9 @@
 
             await NotificationInboxState.RefreshAsync(_user);
         }
-        catch (Exception)
+        catch (Exception ex)
         {
-            _errorMessage = Localizer["App.Notifications.LoadErrorFallback"];
+            _errorMessage = Errors.Report(ex, "load the notifications", Localizer["App.Notifications.LoadErrorFallback"]);
         }
         finally
         {
@@ -177,7 +178,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.Notifications.UpdateErrorTitle"]);
+            Toast.Error(Errors.Report(ex, "update the notifications"), Localizer["App.Notifications.UpdateErrorTitle"]);
             await LoadAsync();
         }
         finally

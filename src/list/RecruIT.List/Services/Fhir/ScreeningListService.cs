@@ -1,4 +1,5 @@
 using System.Security.Claims;
+using System.Text.Json;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Rest;
 using Hl7.Fhir.Utility;
@@ -25,7 +26,7 @@ public sealed class ScreeningListService(
     {
         var client = clientFactory.CreateClient();
 
-        var query = BuildScreeningListsQuery("current,retired");
+        var query = ScreeningListMapping.ScreeningListsQuery("current,retired");
 
         List<Resource> resources;
         try
@@ -38,20 +39,22 @@ public sealed class ScreeningListService(
             throw new FhirAccessException(localizer["App.Errors.TrialsLoadFailed"], ex);
         }
 
-        var researchSubjectsById = resources
-            .OfType<ResearchSubject>()
-            .ToDictionary(rs => rs.Id!, rs => rs);
+        var researchSubjectsById = resources.ToLookupById<ResearchSubject>();
         var lists = resources.OfType<FhirList>().ToList();
 
-        var trialInfoByListId = BuildTrialInfoByListId(resources, lists);
+        var trialInfoByListId = ScreeningListMapping.BuildTrialInfoByListId(resources, lists);
         var accessibleTrials = await accessService.GetAccessibleTrialIdentifiersAsync(user, ct);
 
         var summaries = new List<TrialSummaryDto>();
         foreach (
-            var (list, trialInfo) in GetAccessibleLists(lists, trialInfoByListId, accessibleTrials)
+            var (list, trialInfo) in ScreeningListMapping.GetAccessibleLists(
+                lists,
+                trialInfoByListId,
+                accessibleTrials
+            )
         )
         {
-            var (recruited, pending, notRecruited) = CountByStatus(
+            var (recruited, pending, notRecruited) = ScreeningListMapping.CountByStatus(
                 (list.Entry ?? []).Select(entry =>
                 {
                     var subjectId = entry.Item.GetReferencedId();
@@ -73,7 +76,7 @@ public sealed class ScreeningListService(
                     StudyAcronym = trialInfo.Acronym!,
                     StudyTitle = trialInfo.Title,
                     ListStatus =
-                        EnumUtility.GetLiteral(list.Status) ?? FhirConstants.ListStatusCurrent,
+                        EnumUtility.GetLiteral(list.Status) ?? FhirVocabulary.ListStatusCurrent,
                     RecruitedCount = recruited,
                     PendingCount = pending,
                     NotRecruitedCount = notRecruited,
@@ -96,7 +99,7 @@ public sealed class ScreeningListService(
     {
         var client = clientFactory.CreateClient();
 
-        var query = BuildScreeningListsQuery("current");
+        var query = ScreeningListMapping.ScreeningListsQuery("current");
 
         List<Resource> resources;
         try
@@ -109,17 +112,21 @@ public sealed class ScreeningListService(
             throw new FhirAccessException(localizer["App.Errors.PatientOverviewLoadFailed"], ex);
         }
 
-        var subjectsById = resources.OfType<ResearchSubject>().ToDictionary(rs => rs.Id!, rs => rs);
-        var patientsById = resources.OfType<Patient>().ToDictionary(p => p.Id!, p => p);
+        var subjectsById = resources.ToLookupById<ResearchSubject>();
+        var patientsById = resources.ToLookupById<Patient>();
         var lists = resources.OfType<FhirList>().ToList();
 
-        var trialInfoByListId = BuildTrialInfoByListId(resources, lists);
+        var trialInfoByListId = ScreeningListMapping.BuildTrialInfoByListId(resources, lists);
         var accessibleTrials = await accessService.GetAccessibleTrialIdentifiersAsync(user, ct);
 
         var overviewsByPatient = new Dictionary<string, PatientOverviewDto>();
 
         foreach (
-            var (list, trialInfo) in GetAccessibleLists(lists, trialInfoByListId, accessibleTrials)
+            var (list, trialInfo) in ScreeningListMapping.GetAccessibleLists(
+                lists,
+                trialInfoByListId,
+                accessibleTrials
+            )
         )
         {
             foreach (var entry in list.Entry ?? [])
@@ -152,25 +159,13 @@ public sealed class ScreeningListService(
                 }
 
                 overview.Trials.Add(
-                    new PatientListEntryDto
-                    {
-                        ResearchSubjectId = subject.Id!,
-                        ResearchSubjectIdentifier = subject.GetResearchSubjectIdentifierToken(),
-                        PatientId = patientId,
-                        DisplayName = overview.DisplayName,
-                        BirthDate = overview.BirthDate,
-                        Gender = overview.Gender,
-                        Phone = GetPhone(patient),
-                        Email = GetEmail(patient),
-                        Status = EnumUtility.GetLiteral(subject.Status) ?? "candidate",
-                        RecommendedDate = FhirBundleHelpers.ParseFhirInstant(entry.Date),
-                        SystemDeterminedIneligible = IsFlaggedIneligible(entry),
-                        LastUpdated = subject.Meta?.LastUpdated,
-                        ListId = list.Id,
-                        StudyAcronym = trialInfo.Acronym,
-                        StudyTitle = trialInfo.Title,
-                        TrialIdentifier = trialInfo.Identifier,
-                    }
+                    ScreeningListMapping.ToEntry(
+                        subject,
+                        patient,
+                        patientId,
+                        entry,
+                        (list, trialInfo)
+                    )
                 );
             }
         }
@@ -250,33 +245,10 @@ public sealed class ScreeningListService(
         var group = enrolledGroupId is not null
             ? resources.OfType<Group>().FirstOrDefault(g => g.Id == enrolledGroupId)
             : null;
-        var librariesById = resources
-            .OfType<Library>()
-            .Where(l => l.Id is not null)
-            .ToDictionary(l => l.Id!, l => l);
-        var criteria = (group?.Characteristic ?? [])
-            .Where(c => !string.IsNullOrEmpty(c.Code?.Text))
-            .Select(c =>
-            {
-                // Prefer the Library's own (current) title over Code.Text, a snapshot of the
-                // criterion's display text taken when the characteristic was authored - the two
-                // can drift once a Library is renamed, or reused with a different label, after the
-                // fact. Sql is resolved from the same Library lookup, so this falls back to Code.Text
-                // only when the reference doesn't resolve to a Library we fetched.
-                var library = (c.Value as ResourceReference).GetReferencedId() is { } libraryId
-                    ? librariesById.GetValueOrDefault(libraryId)
-                    : null;
-                return new CriterionDefinitionDto
-                {
-                    DisplayText = library?.Title ?? c.Code!.Text!,
-                    Exclude = c.Exclude ?? false,
-                    Sql = library?.GetSqlText(),
-                };
-            })
-            .ToList();
+        var criteria = ScreeningListMapping.ToCriteria(group, resources.ToLookupById<Library>());
 
-        var subjectsById = resources.OfType<ResearchSubject>().ToDictionary(rs => rs.Id!, rs => rs);
-        var patientsById = resources.OfType<Patient>().ToDictionary(p => p.Id!, p => p);
+        var subjectsById = resources.ToLookupById<ResearchSubject>();
+        var patientsById = resources.ToLookupById<Patient>();
 
         var patientEntries = new List<PatientListEntryDto>();
 
@@ -293,29 +265,11 @@ public sealed class ScreeningListService(
                 patientId is not null && patientsById.TryGetValue(patientId, out var p) ? p : null;
 
             patientEntries.Add(
-                new PatientListEntryDto
-                {
-                    ResearchSubjectId = subject.Id!,
-                    ResearchSubjectIdentifier = subject.GetResearchSubjectIdentifierToken(),
-                    PatientId = patientId ?? string.Empty,
-                    DisplayName = FhirBundleHelpers.GetPatientDisplayName(
-                        patient,
-                        patientId ?? string.Empty
-                    ),
-                    MedicalRecordNumber = patient?.GetMedicalRecordNumber(),
-                    BirthDate = FhirBundleHelpers.ParseFhirInstant(patient?.BirthDate),
-                    Gender = EnumUtility.GetLiteral(patient?.Gender),
-                    Phone = GetPhone(patient),
-                    Email = GetEmail(patient),
-                    Status = EnumUtility.GetLiteral(subject.Status) ?? "candidate",
-                    RecommendedDate = FhirBundleHelpers.ParseFhirInstant(entry.Date),
-                    SystemDeterminedIneligible = IsFlaggedIneligible(entry),
-                    LastUpdated = subject.Meta?.LastUpdated,
-                }
+                ScreeningListMapping.ToEntry(subject, patient, patientId ?? string.Empty, entry)
             );
         }
 
-        var (recruited, pending, notRecruited) = CountByStatus(
+        var (recruited, pending, notRecruited) = ScreeningListMapping.CountByStatus(
             patientEntries.Select(p => p.Status)
         );
 
@@ -330,7 +284,7 @@ public sealed class ScreeningListService(
             StudyTitle = study?.Title,
             StudyDescription = study?.Description,
             Criteria = criteria,
-            ListStatus = EnumUtility.GetLiteral(list.Status) ?? FhirConstants.ListStatusCurrent,
+            ListStatus = EnumUtility.GetLiteral(list.Status) ?? FhirVocabulary.ListStatusCurrent,
             RecruitedCount = recruited,
             PendingCount = pending,
             NotRecruitedCount = notRecruited,
@@ -339,9 +293,10 @@ public sealed class ScreeningListService(
         return (summary, patientEntries.OrderByDescending(p => p.RecommendedDate).ToList());
     }
 
+    /// <summary>Retires or reactivates a screening list - admins only.</summary>
     public async Task UpdateListStatusAsync(
         string listId,
-        string status,
+        FhirList.ListStatus status,
         ClaimsPrincipal user,
         CancellationToken ct = default
     )
@@ -352,7 +307,18 @@ public sealed class ScreeningListService(
         }
 
         var client = clientFactory.CreateClient();
-        var patchDocument = $$"""[{"op":"replace","path":"/status","value":"{{status}}"}]""";
+        // Built by a serializer from the typed status, not by splicing text into JSON.
+        var patchDocument = JsonSerializer.Serialize(
+            new[]
+            {
+                new
+                {
+                    op = "replace",
+                    path = "/status",
+                    value = EnumUtility.GetLiteral(status),
+                },
+            }
+        );
 
         try
         {
@@ -367,201 +333,4 @@ public sealed class ScreeningListService(
             throw new FhirAccessException(localizer["App.Errors.TrialStatusUpdateFailed"], ex);
         }
     }
-
-    /// <summary>
-    /// Resolves the current FHIR List id (and acronym) for a trial identified by its business
-    /// identifier token ("system|value" - see TrialIdentifier), for building a link back into this
-    /// app. Deliberately not cached anywhere - the FHIR List's logical id is server-local and can
-    /// change (e.g. if a study's screening list is ever recreated), unlike the trial identifier
-    /// itself, so callers that only have the token (the notification subsystem persists that, not
-    /// the List id - see NotificationEvent) resolve it fresh here. Not access-checked: callers must
-    /// already know the caller is entitled to see this trial.
-    /// </summary>
-    public async Task<(string ListId, string StudyAcronym)?> ResolveListForTrialAsync(
-        string trialIdentifierToken,
-        CancellationToken ct = default
-    )
-    {
-        var client = clientFactory.CreateClient();
-
-        var studyResources = await FhirBundleHelpers.GetAllPagesAsync(
-            client,
-            $"ResearchStudy?identifier={Uri.EscapeDataString(trialIdentifierToken)}",
-            ct
-        );
-        var study = studyResources.OfType<ResearchStudy>().FirstOrDefault();
-        if (study?.Id is null)
-        {
-            return null;
-        }
-
-        var listResources = await FhirBundleHelpers.GetAllPagesAsync(
-            client,
-            $"List?belongs-to-study=ResearchStudy/{study.Id}",
-            ct
-        );
-        var list = listResources.OfType<FhirList>().FirstOrDefault();
-        if (list?.Id is null)
-        {
-            return null;
-        }
-
-        return (list.Id, study.GetStudyAcronym() ?? list.Id);
-    }
-
-    /// <summary>
-    /// ResolveListForTrialAsync for each distinct token in tokens, at most once per token - the
-    /// "memoize across a batch of items that commonly repeat the same handful of trials" pattern
-    /// shared by the notification feed page and NotificationSenderService's digest loop.
-    /// </summary>
-    public async Task<
-        IReadOnlyDictionary<string, (string ListId, string StudyAcronym)?>
-    > ResolveListsForTrialsAsync(IEnumerable<string> tokens, CancellationToken ct = default)
-    {
-        var distinctTokens = tokens.Distinct().ToList();
-        // Each ResolveListForTrialAsync call creates its own FhirClient, so these are safe to run
-        // concurrently - no shared client instance to race on.
-        var resolved = await Task.WhenAll(
-            distinctTokens.Select(token => ResolveListForTrialAsync(token, ct))
-        );
-        return distinctTokens.Zip(resolved).ToDictionary(x => x.First, x => x.Second);
-    }
-
-    /// <summary>Whether a screening-list entry is flagged as system-determined-ineligible.</summary>
-    private static bool IsFlaggedIneligible(FhirList.EntryComponent entry) =>
-        entry.Flag?.Coding?.Any(c =>
-            c.System == FhirConstants.SystemDeterminedSubjectStatus
-            && c.Code == FhirConstants.DeterminedStatusIneligible
-        ) ?? false;
-
-    private static string? GetPhone(Patient? patient) =>
-        patient
-            ?.Telecom?.FirstOrDefault(t => t.System == ContactPoint.ContactPointSystem.Phone)
-            ?.Value;
-
-    private static string? GetEmail(Patient? patient) =>
-        patient
-            ?.Telecom?.FirstOrDefault(t => t.System == ContactPoint.ContactPointSystem.Email)
-            ?.Value;
-
-    /// <summary>
-    /// The List?code=...&amp;_include=... query shared by every method that scans screening lists
-    /// across trials (dashboard, patient overview, notifications) - only the status filter varies.
-    /// </summary>
-    private static string BuildScreeningListsQuery(string status) =>
-        $"List?code={Uri.EscapeDataString($"{FhirConstants.SystemScreeningList}|{FhirConstants.ScreeningListCode}")}"
-        + $"&status={status}"
-        + "&_include=List:item"
-        + "&_include:iterate=ResearchSubject:patient"
-        + "&_include=List:belongs-to-study"
-        + "&_count=100";
-
-    /// <summary>
-    /// Filters lists down to those whose trial the user can access, paired with the TrialInfo
-    /// resolved for each - the "resolve, then skip if unauthorized" step every cross-trial scan
-    /// needs before it can build its own view-specific DTOs.
-    /// </summary>
-    private static IEnumerable<(FhirList List, TrialInfo Info)> GetAccessibleLists(
-        IEnumerable<FhirList> lists,
-        IReadOnlyDictionary<string, TrialInfo> trialInfoByListId,
-        IReadOnlySet<TrialIdentifier>? accessibleTrials
-    )
-    {
-        foreach (var list in lists)
-        {
-            var trialInfo = list.Id is not null
-                ? trialInfoByListId.GetValueOrDefault(list.Id)
-                : null;
-            if (
-                trialInfo is null
-                || string.IsNullOrEmpty(trialInfo.Acronym)
-                || !TrialAccessService.CanAccessTrial(accessibleTrials, trialInfo.Identifier)
-            )
-            {
-                continue;
-            }
-
-            yield return (list, trialInfo);
-        }
-    }
-
-    /// <summary>Buckets ResearchSubject statuses into the three counts every trial/list summary shows.</summary>
-    private static (int Recruited, int Pending, int NotRecruited) CountByStatus(
-        IEnumerable<string?> statuses
-    )
-    {
-        int recruited = 0,
-            pending = 0,
-            notRecruited = 0;
-
-        foreach (var status in statuses)
-        {
-            if (status is not null && FhirConstants.RecruitedStatuses.Contains(status))
-            {
-                recruited++;
-            }
-            else if (status is not null && FhirConstants.NotRecruitedStatuses.Contains(status))
-            {
-                notRecruited++;
-            }
-            else
-            {
-                pending++;
-            }
-        }
-
-        return (recruited, pending, notRecruited);
-    }
-
-    /// <summary>
-    /// Resolves each List's ResearchStudy - its business identifier (see TrialIdentifier) and its
-    /// acronym, read live off the ResearchStudy rather than trusting a Reference.display text
-    /// cached on the List - from ResearchStudy resources already pulled into the same response via
-    /// the belongs-to-study SearchParameter (see fhir/ig/input/fsh/searchparameters.fsh),
-    /// so this needs no request of its own.
-    /// </summary>
-    private static Dictionary<string, TrialInfo> BuildTrialInfoByListId(
-        IReadOnlyList<Resource> resources,
-        IEnumerable<FhirList> lists
-    )
-    {
-        var studiesById = resources
-            .OfType<ResearchStudy>()
-            .Where(s => s.Id is not null)
-            .ToDictionary(s => s.Id!, s => s);
-
-        var result = new Dictionary<string, TrialInfo>();
-        foreach (var list in lists)
-        {
-            var studyId = list.GetReferenceExtension(FhirConstants.UrlListBelongsToStudy)
-                ?.GetReferencedId();
-            if (
-                list.Id is null
-                || studyId is null
-                || !studiesById.TryGetValue(studyId, out var study)
-            )
-            {
-                continue;
-            }
-
-            if (study.GetTrialIdentifier() is { } identifier)
-            {
-                result[list.Id] = new TrialInfo(
-                    identifier,
-                    study.GetStudyAcronym(),
-                    study.Title,
-                    studyId
-                );
-            }
-        }
-
-        return result;
-    }
-
-    private sealed record TrialInfo(
-        TrialIdentifier Identifier,
-        string? Acronym,
-        string? Title,
-        string StudyId
-    );
 }

@@ -1,14 +1,19 @@
+using System.Net.Sockets;
 using MailKit;
 using MailKit.Net.Smtp;
 using MailKit.Security;
+using Microsoft.Extensions.Localization;
 using Microsoft.Extensions.Options;
 using MimeKit;
 using RecruIT.List.Options;
+using RecruIT.List.Resources;
 
 namespace RecruIT.List.Services.Notify;
 
-public sealed class EmailNotificationChannel(IOptions<EmailNotificationOptions> mailerOptions)
-    : INotificationChannel
+public sealed class EmailNotificationChannel(
+    IOptions<EmailNotificationOptions> mailerOptions,
+    IStringLocalizer<SharedResources> localizer
+) : INotificationChannel
 {
     public async Task<INotificationBatch> BeginBatchAsync(
         Stream? protocolLog = null,
@@ -51,6 +56,52 @@ public sealed class EmailNotificationChannel(IOptions<EmailNotificationOptions> 
         }
 
         return new EmailBatch(client, options.From);
+    }
+
+    public IReadOnlyList<FailureDetail> DescribeFailure(Exception ex)
+    {
+        var details = new List<FailureDetail>();
+
+        if (ex is SmtpCommandException command)
+        {
+            // The server's own verdict - e.g. 535 for rejected credentials, 550 for a refused mailbox.
+            details.Add(
+                new(
+                    localizer["App.NotificationTest.SmtpStatusCodeLabel"],
+                    $"{(int)command.StatusCode} ({command.StatusCode})"
+                )
+            );
+            details.Add(
+                new(
+                    localizer["App.NotificationTest.SmtpErrorCodeLabel"],
+                    command.ErrorCode.ToString()
+                )
+            );
+            if (command.Mailbox is not null)
+            {
+                details.Add(
+                    new(localizer["App.NotificationTest.MailboxLabel"], command.Mailbox.Address)
+                );
+            }
+        }
+
+        // Connection failures (refused, DNS, timeout) usually arrive wrapped, so look past the
+        // outermost exception for the socket-level cause.
+        for (var inner = ex; inner is not null; inner = inner.InnerException)
+        {
+            if (inner is SocketException socket)
+            {
+                details.Add(
+                    new(
+                        localizer["App.NotificationTest.SocketErrorLabel"],
+                        socket.SocketErrorCode.ToString()
+                    )
+                );
+                break;
+            }
+        }
+
+        return details;
     }
 
     private sealed class EmailBatch(SmtpClient client, string from) : INotificationBatch

@@ -2,6 +2,7 @@
 @attribute [Authorize]
 @using RecruIT.List.Data.Entities
 @inject ScreeningListService ScreeningListService
+@inject ErrorReporter Errors
 @inject TrialAccessService AccessService
 @inject ToastService Toast
 @inject BreadcrumbState BreadcrumbState
@@ -168,17 +169,9 @@ else if (_trial is not null)
 
             await LoadGrantsAsync();
         }
-        catch (UnauthorizedAccessException ex)
+        catch (Exception ex)
         {
-            _errorMessage = ex.Message;
-        }
-        catch (FhirAccessException ex)
-        {
-            _errorMessage = ex.Message;
-        }
-        catch (Exception)
-        {
-            _errorMessage = Localizer["App.TrialAccess.LoadErrorFallback"];
+            _errorMessage = Errors.Report(ex, "load the trial's access grants", Localizer["App.TrialAccess.LoadErrorFallback"]);
         }
         finally
         {
@@ -214,7 +207,7 @@ else if (_trial is not null)
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.TrialAccess.GrantSaveError"]);
+            Toast.Error(Errors.Report(ex, "save an access grant"), Localizer["App.TrialAccess.GrantSaveError"]);
         }
         finally
         {
@@ -236,7 +229,7 @@ else if (_trial is not null)
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.TrialAccess.GrantSaveError"]);
+            Toast.Error(Errors.Report(ex, "save an access grant"), Localizer["App.TrialAccess.GrantSaveError"]);
         }
     }
 
@@ -250,7 +243,7 @@ else if (_trial is not null)
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.TrialAccess.GrantRevokeError"]);
+            Toast.Error(Errors.Report(ex, "revoke an access grant"), Localizer["App.TrialAccess.GrantRevokeError"]);
         }
     }
 

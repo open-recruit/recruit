@@ -15,7 +15,7 @@ namespace RecruIT.List.Services;
 /// Screening notes, stored as rows in Postgres (screening_notes) - editable by their author, with
 /// every superseded version kept in screening_note_revisions - keyed by
 /// ResearchSubject's business identifier, not its FHIR logical id (see
-/// RecruIT.List.Services.Fhir.FhirConstants.UrlResearchSubjectIdentifier). Replaces the earlier design of appending FHIR
+/// RecruIT.List.Services.Fhir.FhirVocabulary.UrlResearchSubjectIdentifier). Replaces the earlier design of appending FHIR
 /// Annotation extensions to ResearchSubject, which had an unmitigated lost-update race on
 /// concurrent adds (read-then-PATCH with no ETag) and polluted the resource's FHIR version history
 /// on every note-only edit.
@@ -70,7 +70,7 @@ public sealed class ScreeningNoteService(
                 "Failed to save screening note for ResearchSubject identifier {ResearchSubjectIdentifier}",
                 researchSubjectIdentifier
             );
-            throw new FhirAccessException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
+            throw new UserFacingException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
         }
     }
 
@@ -132,7 +132,7 @@ public sealed class ScreeningNoteService(
         catch (Exception ex)
         {
             logger.LogError(ex, "Failed to update screening note {NoteId}", noteId);
-            throw new FhirAccessException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
+            throw new UserFacingException(localizer["App.Errors.PatientRecordUpdateFailed"], ex);
         }
     }
 

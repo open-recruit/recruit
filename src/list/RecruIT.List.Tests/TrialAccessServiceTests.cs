@@ -5,12 +5,6 @@ using static RecruIT.List.Tests.TestUsers;
 
 namespace RecruIT.List.Tests;
 
-// TrialAccessService.AdminRoles is a mutable static; keep tests that touch it out of xUnit's
-// default cross-class parallelization.
-[CollectionDefinition(nameof(TrialAccessRoleCollection), DisableParallelization = true)]
-public sealed class TrialAccessRoleCollection;
-
-[Collection(nameof(TrialAccessRoleCollection))]
 public sealed class TrialAccessServiceTests
 {
     private static readonly TrialIdentifier TrialA = new(
@@ -22,45 +16,65 @@ public sealed class TrialAccessServiceTests
         "STUDY-B"
     );
 
-    private static TrialAccessService CreateService(SqliteDbContextFactory factory) =>
-        new(factory, new FakeStringLocalizer(), NullLogger<TrialAccessService>.Instance);
+    private static TrialAccessService CreateService(
+        SqliteDbContextFactory factory,
+        AdminRoles? adminRoles = null
+    ) =>
+        new(
+            factory,
+            new FakeStringLocalizer(),
+            NullLogger<TrialAccessService>.Instance,
+            adminRoles ?? AdminRoles.Default
+        );
 
     [Fact]
     public async Task Any_configured_admin_role_is_used_for_admin_checks()
     {
-        // AdminRoles is a static, set once at startup from config - not parallel-safe, hence try/finally.
-        var originalAdminRoles = TrialAccessService.AdminRoles;
-        try
+        using var factory = new SqliteDbContextFactory();
+        var roles = new AdminRoles(["recruit-admin", "study-admin"]);
+        var service = CreateService(factory, roles);
+
+        foreach (var role in roles.Roles)
         {
-            TrialAccessService.AdminRoles = ["recruit-admin", "study-admin"];
+            var admin = CreateUser(sub: "admin-1", role: role);
 
-            using var factory = new SqliteDbContextFactory();
-            var service = CreateService(factory);
-
-            foreach (var role in TrialAccessService.AdminRoles)
-            {
-                var admin = CreateUser(sub: "admin-1", role: role);
-
-                Assert.True(
-                    await service.CanAccessTrialAsync(
-                        admin,
-                        TrialA,
-                        TestContext.Current.CancellationToken
-                    )
-                );
-                Assert.True(service.CanPatchList(admin));
-                Assert.True(service.CanDelete(admin));
-            }
-
-            // the configured roles replace the "admin" default rather than adding to it
-            var defaultRoleUser = CreateUser(sub: "user-1", role: "admin");
-            Assert.False(TrialAccessService.IsAdmin(defaultRoleUser));
-            Assert.False(service.CanDelete(defaultRoleUser));
+            Assert.True(
+                await service.CanAccessTrialAsync(
+                    admin,
+                    TrialA,
+                    TestContext.Current.CancellationToken
+                )
+            );
+            Assert.True(service.CanPatchList(admin));
         }
-        finally
-        {
-            TrialAccessService.AdminRoles = originalAdminRoles;
-        }
+
+        // the configured roles replace the "admin" default rather than adding to it
+        var defaultRoleUser = CreateUser(sub: "user-1", role: AdminRoles.DefaultRole);
+        Assert.False(service.IsAdmin(defaultRoleUser));
+        Assert.False(service.CanPatchList(defaultRoleUser));
+    }
+
+    [Fact]
+    public async Task A_grant_given_to_an_email_only_applies_to_a_user_whose_email_is_verified()
+    {
+        using var factory = new SqliteDbContextFactory();
+        var service = CreateService(factory);
+        await SeedGrantAsync(factory, TrialA, "jane@example.com", TrialPermissionLevel.TrialAdmin);
+        var ct = TestContext.Current.CancellationToken;
+
+        var impostor = CreateUser(sub: "impostor", email: "jane@example.com", emailVerified: false);
+        var jane = CreateUser(sub: "jane-sub", email: "jane@example.com");
+
+        Assert.False(await service.CanAccessTrialAsync(impostor, TrialA, ct));
+        Assert.Null(await service.GetPermissionAsync(impostor, TrialA, ct));
+        var accessible = await service.GetAccessibleTrialIdentifiersAsync(impostor, ct);
+        Assert.NotNull(accessible);
+        Assert.Empty(accessible);
+        Assert.True(await service.CanAccessTrialAsync(jane, TrialA, ct));
+        Assert.Equal(
+            TrialPermissionLevel.TrialAdmin,
+            await service.GetPermissionAsync(jane, TrialA, ct)
+        );
     }
 
     [Fact]

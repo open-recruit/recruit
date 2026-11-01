@@ -71,33 +71,16 @@ public sealed class NotificationTests(AppFixture app) : PageTest
     private async Task<string> PickFirstOptionAsync(string selectName)
     {
         var combobox = Page.GetByRole(AriaRole.Combobox, new() { Name = selectName });
-        await OpenUntilVisibleAsync(combobox, combobox.And(Page.Locator("[aria-expanded='true']")));
+        await combobox.ClickUntilVisibleAsync(
+            combobox.And(Page.Locator("[aria-expanded='true']")),
+            $"Clicking the {selectName} select never opened it."
+        );
         // Scoped to this select's own listbox: the previous select's may still be closing.
         var listboxId = await combobox.GetAttributeAsync("aria-controls");
         var option = Page.Locator($"[id='{listboxId}']").GetByRole(AriaRole.Option).First;
         var text = (await option.InnerTextAsync()).Trim();
         await option.ClickAsync();
         return text;
-    }
-
-    /// <summary>
-    /// Pages are prerendered, so a click that lands before Blazor's circuit has connected does
-    /// nothing - retried until it actually opens what it should.
-    /// </summary>
-    private static async Task OpenUntilVisibleAsync(ILocator trigger, ILocator opened)
-    {
-        for (var attempt = 0; attempt < 20; attempt++)
-        {
-            await trigger.ClickAsync();
-            try
-            {
-                await opened.WaitForAsync(new() { Timeout = 1500 });
-                return;
-            }
-            catch (TimeoutException) { }
-        }
-
-        throw new TimeoutException("Clicking never opened the expected element.");
     }
 
     /// <summary>On a trial's screening list: subscribes with the default (Instant) frequency.</summary>

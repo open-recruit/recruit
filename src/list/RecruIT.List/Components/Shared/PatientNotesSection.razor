@@ -1,5 +1,6 @@
 @using System.Text.RegularExpressions
 @inject ScreeningNoteService ScreeningNoteService
+@inject ErrorReporter Errors
 @inject ToastService Toast
 @inject IStringLocalizer<SharedResources> Localizer
 
@@ -184,9 +185,10 @@
         {
             _notes = [.. await ScreeningNoteService.GetNotesAsync(researchSubjectIdentifier)];
         }
-        catch
+        catch (Exception ex)
         {
             // Best-effort - an empty notes list is preferable to blocking on a fetch failure.
+            Errors.Swallowed(ex, "load the patient's notes");
             _notes = [];
         }
         finally
@@ -272,7 +274,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.Toast.NoteSaveError"]);
+            Toast.Error(Errors.Report(ex, "save a note"), Localizer["App.Toast.NoteSaveError"]);
         }
         finally
         {
@@ -305,7 +307,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.Toast.NoteSaveError"]);
+            Toast.Error(Errors.Report(ex, "save a note"), Localizer["App.Toast.NoteSaveError"]);
         }
         finally
         {

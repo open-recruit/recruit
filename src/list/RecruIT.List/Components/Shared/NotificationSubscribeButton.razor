@@ -1,4 +1,5 @@
 @inject IStringLocalizer<SharedResources> Localizer
+@inject ErrorReporter Errors
 @inject NotificationSubscriptionService NotificationSubscriptionService
 @inject IJSRuntime JS
 @inject ToastService Toast
@@ -155,7 +156,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.Subscription.SaveErrorTitle"]);
+            Toast.Error(Errors.Report(ex, "save the notification subscription"), Localizer["App.Subscription.SaveErrorTitle"]);
         }
         finally
         {

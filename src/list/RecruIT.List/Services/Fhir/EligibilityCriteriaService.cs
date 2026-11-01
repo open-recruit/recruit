@@ -1,49 +1,31 @@
-using System.Security.Cryptography;
-using System.Text;
-using De.Medizininformatikinitiative.Kerndatensatz.Studie;
+using System.Security.Claims;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Serialization;
 using Microsoft.Extensions.Localization;
 using RecruIT.List.Models;
 using RecruIT.List.Resources;
-using FhirList = Hl7.Fhir.Model.List;
+using RecruIT.List.Services.Access;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Services.Fhir;
 
 /// <summary>
 /// Backs the admin-only Criteria Manager page: lets an admin browse existing ResearchStudy and
-/// Library resources, assemble the FHIR resources (ResearchStudy, Group, one Library per criterion)
-/// that a study's eligibility criteria would consist of, per
-/// docs/trino/eligibility-criteria-design.md, and submit that same Bundle as a transaction against
-/// the FHIR server.
+/// Library resources, and preview and submit the transaction Bundle (see
+/// EligibilityCriteriaBundleBuilder) a study's eligibility criteria consist of against the FHIR
+/// server. Every method that reads or writes the FHIR server takes the user and refuses a
+/// non-admin itself, rather than relying on the page hiding its controls.
 /// </summary>
 public sealed class EligibilityCriteriaService(
     FhirClientFactory clientFactory,
     IStringLocalizer<SharedResources> localizer,
-    ILogger<EligibilityCriteriaService> logger
+    ILogger<EligibilityCriteriaService> logger,
+    AdminRoles adminRoles
 )
 {
     /// <summary>
-    /// Library.type coding that marks a Library as SQL-on-FHIR eligibility-criterion SQL, as
-    /// opposed to any other kind of Library resource a FHIR server might hold - see
-    /// query-sql-on-fhir's PollForStudies.SQL_QUERY_LIBRARY_TYPE_SYSTEM/_CODE, which writes this
-    /// same coding.
-    /// </summary>
-    private const string SqlQueryLibraryTypeSystem =
-        "https://sql-on-fhir.org/ig/CodeSystem/LibraryTypesCodes";
-    private const string SqlQueryLibraryTypeCode = "sql-query";
-
-    /// <summary>
-    /// SQL-on-FHIR's own extension for carrying the SQL text alongside content.data's base64 - see
-    /// https://build.fhir.org/ig/FHIR/sql-on-fhir-v2/StructureDefinition-SQLQuery.html#sql-attachments.
-    /// </summary>
-    private const string SqlTextExtensionUrl =
-        "https://sql-on-fhir.org/ig/StructureDefinition/sql-text";
-
-    /// <summary>
     /// Every ResearchStudy resource returned by GetResearchStudiesAsync, keyed by id - lets
-    /// BuildPreviewBundle embed the exact, unmodified resource for a study picked via the "use an
+    /// BuildBundle embed the exact, unmodified resource for a study picked via the "use an
     /// existing study" flow without a second (and necessarily synchronous, since preview building
     /// happens from a Razor property getter) round trip to the FHIR server.
     /// </summary>
@@ -61,9 +43,11 @@ public sealed class EligibilityCriteriaService(
     /// support (chained search) to stay cheap at a much larger resource count.
     /// </summary>
     public async Task<IReadOnlyList<LibrarySummaryDto>> SearchLibrariesAsync(
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         List<Resource> libraries;
         List<Resource> groups;
         List<Resource> studies;
@@ -74,7 +58,7 @@ public sealed class EligibilityCriteriaService(
             // mutable instance fields that aren't safe to touch from concurrent calls.
             var librariesTask = FhirBundleHelpers.GetAllPagesAsync(
                 clientFactory.CreateClient(),
-                $"Library?type={Uri.EscapeDataString($"{SqlQueryLibraryTypeSystem}|{SqlQueryLibraryTypeCode}")}"
+                $"Library?type={Uri.EscapeDataString($"{EligibilityCriteriaBundleBuilder.SqlQueryLibraryTypeSystem}|{EligibilityCriteriaBundleBuilder.SqlQueryLibraryTypeCode}")}"
                     + "&_count=100&_sort=-_lastUpdated",
                 ct
             );
@@ -117,7 +101,7 @@ public sealed class EligibilityCriteriaService(
                             .Select(study => (LibraryId: libraryId!, Study: study))
                     )
             )
-            .ToLookup(x => x.LibraryId, x => StudyDisplayName(x.Study));
+            .ToLookup(x => x.LibraryId, x => x.Study.GetStudyDisplayName());
 
         return libraries
             .OfType<Library>()
@@ -141,11 +125,6 @@ public sealed class EligibilityCriteriaService(
             .ToList();
     }
 
-    private static string StudyDisplayName(ResearchStudy study) =>
-        study.GetStudyAcronym() is { Length: > 0 } acronym
-            ? acronym
-            : study.Title ?? study.Id ?? "?";
-
     /// <summary>
     /// Fetches every ResearchStudy resource on the FHIR server, once per circuit, for the "use an
     /// existing study" picker: assumed to comfortably fit in memory (on the order of up to ~1000
@@ -154,9 +133,11 @@ public sealed class EligibilityCriteriaService(
     /// the ":contains" string-search modifier a server-side title search would otherwise need.
     /// </summary>
     public async Task<IReadOnlyList<ResearchStudySummaryDto>> GetResearchStudiesAsync(
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         if (_cachedResearchStudySummaries is { } cached)
         {
             return cached;
@@ -211,9 +192,11 @@ public sealed class EligibilityCriteriaService(
     /// </summary>
     public async Task<IReadOnlyList<CriterionDraft>> GetStudyCriteriaAsync(
         string studyId,
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
+        EnsureAdmin(user);
         List<Resource> resources;
         try
         {
@@ -236,14 +219,8 @@ public sealed class EligibilityCriteriaService(
         }
 
         var study = resources.OfType<ResearchStudy>().FirstOrDefault(s => s.Id == studyId);
-        var groupsById = resources
-            .OfType<Group>()
-            .Where(g => g.Id is not null)
-            .ToDictionary(g => g.Id!);
-        var librariesById = resources
-            .OfType<Library>()
-            .Where(l => l.Id is not null)
-            .ToDictionary(l => l.Id!);
+        var groupsById = resources.ToLookupById<Group>();
+        var librariesById = resources.ToLookupById<Library>();
 
         var criteria = new List<CriterionDraft>();
         foreach (var enrollment in study?.Enrollment ?? [])
@@ -293,32 +270,26 @@ public sealed class EligibilityCriteriaService(
         return criteria;
     }
 
-    /// <summary>
-    /// Assembles the draft into a preview-only FHIR transaction Bundle and serializes it to
-    /// pretty-printed JSON. Bundle shape: one Library entry per newly-authored criterion, one Group
-    /// entry referencing all of them (plus any reused-by-reference criteria) via
-    /// Group.characteristic, and one ResearchStudy entry enrolling that Group.
-    /// </summary>
+    /// <summary>The study's criteria Bundle (see EligibilityCriteriaBundleBuilder), serialized to pretty-printed JSON.</summary>
     public string BuildPreviewJson(
         ResearchStudyDraft studyDraft,
         IReadOnlyList<CriterionDraft> criteria
-    )
-    {
-        var bundle = BuildPreviewBundle(studyDraft, criteria);
-        return new FhirJsonSerializer().SerializeToString(bundle, pretty: true);
-    }
+    ) =>
+        new FhirJsonSerializer().SerializeToString(BuildBundle(studyDraft, criteria), pretty: true);
 
     /// <summary>
-    /// Assembles the same Bundle as BuildPreviewJson and actually submits it as a transaction
-    /// against the FHIR server, upserting every resource in it at once.
+    /// Submits the same Bundle BuildPreviewJson shows as a transaction against the FHIR server,
+    /// upserting every resource in it at once.
     /// </summary>
     public async Task SubmitAsync(
         ResearchStudyDraft studyDraft,
         IReadOnlyList<CriterionDraft> criteria,
+        ClaimsPrincipal user,
         CancellationToken ct = default
     )
     {
-        var bundle = BuildPreviewBundle(studyDraft, criteria);
+        EnsureAdmin(user);
+        var bundle = BuildBundle(studyDraft, criteria);
         var client = clientFactory.CreateClient();
 
         try
@@ -332,288 +303,30 @@ public sealed class EligibilityCriteriaService(
         }
     }
 
-    private static Attachment BuildSqlAttachment(string contentType, string sql) =>
-        new()
+    private void EnsureAdmin(ClaimsPrincipal user)
+    {
+        if (!adminRoles.IsAdmin(user))
         {
-            ContentType = contentType,
-            Extension = [new Extension(SqlTextExtensionUrl, new FhirString(sql))],
-            Data = Encoding.UTF8.GetBytes(sql),
-        };
+            throw new UnauthorizedAccessException(localizer["App.Errors.NotAuthorizedAdminOnly"]);
+        }
+    }
 
-    private Bundle BuildPreviewBundle(
+    private Bundle BuildBundle(
         ResearchStudyDraft studyDraft,
         IReadOnlyList<CriterionDraft> criteria
     )
     {
-        var libraryEntries = new List<Bundle.EntryComponent>();
-        var characteristics = new List<Group.CharacteristicComponent>();
-
-        foreach (var criterion in criteria)
-        {
-            ResourceReference libraryReference;
-
-            if (!string.IsNullOrWhiteSpace(criterion.ExistingLibraryReference))
-            {
-                libraryReference = new ResourceReference(criterion.ExistingLibraryReference.Trim());
-            }
-            else
-            {
-                // Library.name is always the slugified Title, never independently authored - so its
-                // identity (and thus the update-as-create hash below) is purely a function of Title.
-                // Two ad hoc criteria in the same study sharing a Title collide into one Library by
-                // design, same as the "point a second study's characteristic at an existing Library"
-                // dedup story in docs/trino/eligibility-criteria-design.md.
-                var name = Slug.Create(criterion.DisplayText);
-                var libraryId = ComputeIdentifierHashId(
-                    FhirConstants.UrlUiCreatedEligibilityLibraryIdentifier,
-                    name
-                );
-
-                var library = new Library
-                {
-                    Id = libraryId,
-                    Status = PublicationStatus.Active,
-                    Title = criterion.DisplayText,
-                    Name = name,
-                    Description = string.IsNullOrWhiteSpace(criterion.Description)
-                        ? null
-                        : criterion.Description,
-                    // Must match the type SearchLibrariesAsync filters on and PollForStudies'
-                    // chained discovery search looks for - without it this Library would be
-                    // invisible to both the catalog and the poll job once actually persisted.
-                    Type = new CodeableConcept(SqlQueryLibraryTypeSystem, SqlQueryLibraryTypeCode),
-                    // Same shape as superset-library-sync's Libraries (see SqlContentType): the
-                    // dialect-agnostic content first, which GetSqlText reads back, then the same SQL
-                    // for the criterion's dialect.
-                    Content =
-                    [
-                        BuildSqlAttachment(SqlContentType.DialectAgnostic, criterion.Sql),
-                        BuildSqlAttachment(SqlContentType.For(criterion.Dialect), criterion.Sql),
-                    ],
-                };
-                library.Identifier.Add(
-                    new Identifier(FhirConstants.UrlUiCreatedEligibilityLibraryIdentifier, name)
-                );
-
-                libraryEntries.Add(
-                    new Bundle.EntryComponent
-                    {
-                        Resource = library,
-                        Request = new Bundle.RequestComponent
-                        {
-                            Method = Bundle.HTTPVerb.PUT,
-                            Url = $"Library/{libraryId}",
-                        },
-                    }
-                );
-
-                libraryReference = new ResourceReference($"Library/{libraryId}");
-            }
-
-            characteristics.Add(
-                new Group.CharacteristicComponent
-                {
-                    Code = new CodeableConcept(
-                        system: null,
-                        code: null,
-                        text: criterion.DisplayText
-                    ),
-                    Value = libraryReference,
-                    Exclude = criterion.Exclude,
-                }
-            );
-        }
-
-        var group = new Group
-        {
-            Type = Group.GroupType.Person,
-            Actual = false,
-            Active = true,
-            Characteristic = characteristics,
-        };
-
-        // A UI-assigned identifier that anchors the Group's identity, shared with the ResearchStudy
-        // below when it's newly-authored (each under their own resource-specific system, so they
-        // still hash to different ids) - same story as the ad hoc Library criteria above. For a
-        // study picked via the "use an existing study" flow, its own FHIR id anchors the Group's
-        // identity instead, so re-authoring criteria for that study always targets the same Group.
-        var groupIdentifierValue = studyDraft.ExistingStudyId ?? Slug.Create(studyDraft.Title);
-
-        group.Identifier.Add(
-            new Identifier(FhirConstants.UrlEligibilityGroupIdentifier, groupIdentifierValue)
-        );
-        var groupId = ComputeIdentifierHashId(
-            FhirConstants.UrlEligibilityGroupIdentifier,
-            groupIdentifierValue
-        );
-        group.Id = groupId;
-        var groupReference = new ResourceReference($"Group/{groupId}");
-        var groupEntry = new Bundle.EntryComponent
-        {
-            Resource = group,
-            Request = new Bundle.RequestComponent
-            {
-                Method = Bundle.HTTPVerb.PUT,
-                Url = $"Group/{groupId}",
-            },
-        };
-
-        var (studyEntry, study) = studyDraft.ExistingStudyId is { } existingStudyId
-            ? BuildExistingStudyEntry(existingStudyId, groupReference)
-            : BuildNewStudyEntry(studyDraft, groupReference);
-
-        var bundle = new Bundle { Type = Bundle.BundleType.Transaction };
-        bundle.Entry.Add(studyEntry);
-        bundle.Entry.Add(groupEntry);
-        bundle.Entry.AddRange(libraryEntries);
-
-        if (studyDraft.CreateEmptyScreeningList)
-        {
-            bundle.Entry.Add(BuildScreeningListEntry(study));
-        }
-
-        return bundle;
-    }
-
-    /// <summary>
-    /// Embeds the picked ResearchStudy exactly as last fetched by GetResearchStudiesAsync, except
-    /// that Enrollment is replaced with a single reference to the criteria Group - a study only ever
-    /// screens against the one eligibility Group this page is authoring, so any previously-enrolled
-    /// Group(s) (this page's own past output, or otherwise) are dropped rather than kept alongside it.
-    /// </summary>
-    private (Bundle.EntryComponent Entry, ResearchStudy Study) BuildExistingStudyEntry(
-        string existingStudyId,
-        ResourceReference groupReference
-    )
-    {
-        if (!_researchStudiesById.TryGetValue(existingStudyId, out var existingStudy))
+        ResearchStudy? existingStudy = null;
+        if (
+            studyDraft.ExistingStudyId is { } existingStudyId
+            && !_researchStudiesById.TryGetValue(existingStudyId, out existingStudy)
+        )
         {
             throw new InvalidOperationException(
                 $"ResearchStudy/{existingStudyId} is not among the last-searched studies."
             );
         }
 
-        var study = existingStudy.DeepCopy();
-        study.Enrollment = [groupReference];
-
-        var entry = new Bundle.EntryComponent
-        {
-            Resource = study,
-            Request = new Bundle.RequestComponent
-            {
-                Method = Bundle.HTTPVerb.PUT,
-                Url = $"ResearchStudy/{study.Id}",
-            },
-        };
-        return (entry, study);
+        return EligibilityCriteriaBundleBuilder.Build(studyDraft, criteria, existingStudy);
     }
-
-    private static (Bundle.EntryComponent Entry, ResearchStudy Study) BuildNewStudyEntry(
-        ResearchStudyDraft studyDraft,
-        ResourceReference groupReference
-    )
-    {
-        var study = new ResearchStudy
-        {
-            Status = ResearchStudy.ResearchStudyStatus.Active,
-            Title = studyDraft.Title,
-            Description = string.IsNullOrWhiteSpace(studyDraft.Description)
-                ? null
-                : studyDraft.Description,
-            Enrollment = [groupReference],
-        };
-
-        if (!string.IsNullOrWhiteSpace(studyDraft.Acronym))
-        {
-            study.Extension.Add(
-                Studie.Extensions.MiiExStudieAkronym(new FhirString(studyDraft.Acronym))
-            );
-        }
-
-        // Always computable (Title is never null), so a newly-authored study always gets a
-        // deterministic update-as-create id, never a plain POST with a server-assigned one.
-        var uiCreatedIdentifierValue = Slug.Create(studyDraft.Title);
-        study.Identifier.Add(
-            new Identifier(
-                FhirConstants.UrlUiCreatedResearchStudyIdentifier,
-                uiCreatedIdentifierValue
-            )
-        );
-        var studyId = ComputeIdentifierHashId(
-            FhirConstants.UrlUiCreatedResearchStudyIdentifier,
-            uiCreatedIdentifierValue
-        );
-        study.Id = studyId;
-
-        var entry = new Bundle.EntryComponent
-        {
-            Resource = study,
-            Request = new Bundle.RequestComponent
-            {
-                Method = Bundle.HTTPVerb.PUT,
-                Url = $"ResearchStudy/{studyId}",
-            },
-        };
-        return (entry, study);
-    }
-
-    /// <summary>
-    /// Builds an empty (no entry) screening List for the given study, in the same shape and under
-    /// the same update-as-create identity query-sql-on-fhir's EligibilityBundleBuilder uses - so a
-    /// later successful poll updates this same List in place (adding its own entries) rather than
-    /// creating a duplicate. Opt-in only (ResearchStudyDraft.CreateEmptyScreeningList): a study may
-    /// already have a real List with recruited patients, and this would silently wipe its entries.
-    /// </summary>
-    private static Bundle.EntryComponent BuildScreeningListEntry(ResearchStudy study)
-    {
-        // Matches EligibilityBundleBuilder's own id/identifier derivation: the study's own first
-        // business identifier value, or "" if it has none (same as Hapi's getIdentifierFirstRep()).
-        var studyIdentifierValue = study.Identifier.FirstOrDefault()?.Value ?? string.Empty;
-
-        var list = new FhirList
-        {
-            Status = FhirList.ListStatus.Current,
-            Mode = ListMode.Working,
-            Code = new CodeableConcept(
-                FhirConstants.SystemScreeningList,
-                FhirConstants.ScreeningListCode
-            ),
-        };
-        list.Identifier.Add(
-            new Identifier(FhirConstants.UrlScreeningListIdentifier, studyIdentifierValue)
-        );
-        list.Extension.Add(
-            new Extension(
-                FhirConstants.UrlListBelongsToStudy,
-                new ResourceReference($"ResearchStudy/{study.Id}")
-                {
-                    Display = StudyDisplayName(study),
-                }
-            )
-        );
-
-        var listId = ComputeIdentifierHashId(
-            FhirConstants.UrlScreeningListIdentifier,
-            studyIdentifierValue
-        );
-        list.Id = listId;
-
-        return new Bundle.EntryComponent
-        {
-            Resource = list,
-            Request = new Bundle.RequestComponent
-            {
-                Method = Bundle.HTTPVerb.PUT,
-                Url = $"List/{listId}",
-            },
-        };
-    }
-
-    /// <summary>
-    /// Update-as-create id for a resource identified by (system, value): a lowercase-hex SHA-256
-    /// digest of "system|value", used as both the resource id and the PUT url so re-submitting the
-    /// same identifier always targets the same resource instead of creating a duplicate.
-    /// </summary>
-    private static string ComputeIdentifierHashId(string system, string value) =>
-        Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes($"{system}|{value}")));
 }

@@ -2,6 +2,7 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject BreadcrumbState BreadcrumbState
+@inject ErrorReporter Errors
 @inject NotificationInboxState NotificationInboxState
 @inject IStringLocalizer<SharedResources> Localizer
 @inject NavigationManager Navigation
@@ -47,7 +48,7 @@
                     </BbSidebarMenuItem>
                 </BbSidebarMenu>
             </BbSidebarGroup>
-            <AuthorizeView Policy="Admin">
+            <AuthorizeView Policy="@AuthPolicies.Admin">
                 <BbSidebarGroup>
                     <BbSidebarGroupLabel>@Localizer["App.Nav.GroupAdmin"]</BbSidebarGroupLabel>
                     <BbSidebarMenu>
@@ -215,10 +216,11 @@
             var user = await AuthStateTask.GetUserAsync();
             await NotificationInboxState.RefreshAsync(user);
         }
-        catch
+        catch (Exception ex)
         {
             // Best-effort - the nav item simply shows no badge if the count can't be computed
             // (including if AuthStateTask itself failed, e.g. a token-refresh error).
+            Errors.Swallowed(ex, "count the unread notifications");
         }
     }
 

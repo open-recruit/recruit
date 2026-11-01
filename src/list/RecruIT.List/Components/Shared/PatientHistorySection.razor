@@ -1,4 +1,5 @@
 @inject ResearchSubjectService ResearchSubjectService
+@inject ErrorReporter Errors
 @inject IStringLocalizer<SharedResources> Localizer
 
 <div>
@@ -96,9 +97,10 @@
         {
             _entries = [.. await ResearchSubjectService.GetTimelineAsync(Patient.ResearchSubjectId, Patient.ResearchSubjectIdentifier)];
         }
-        catch
+        catch (Exception ex)
         {
             // Best-effort - an empty history is preferable to blocking on a fetch failure.
+            Errors.Swallowed(ex, "load the patient's history");
             _entries = [];
         }
         finally

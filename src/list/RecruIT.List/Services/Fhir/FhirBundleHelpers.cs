@@ -40,6 +40,20 @@ internal static class FhirBundleHelpers
         return resources;
     }
 
+    /// <summary>
+    /// The resources of one type by id. A FHIR server runs _include again for every page it emits, so
+    /// across the pages GetAllPagesAsync follows the same included resource can arrive more than
+    /// once - which plain ToDictionary would reject. Copies of one id are the same resource, so the
+    /// first is kept.
+    /// </summary>
+    public static Dictionary<string, T> ToLookupById<T>(this IEnumerable<Resource> resources)
+        where T : Resource =>
+        resources
+            .OfType<T>()
+            .Where(r => r.Id is not null)
+            .GroupBy(r => r.Id!)
+            .ToDictionary(g => g.Key, g => g.First());
+
     public static ResourceReference? GetReferenceExtension(this IExtendable element, string url) =>
         element.GetExtension(url)?.Value as ResourceReference;
 
@@ -57,12 +71,12 @@ internal static class FhirBundleHelpers
 
     /// <summary>
     /// ResearchSubject's business identifier formatted as "system|value" - see
-    /// RecruIT.List.Services.Fhir.FhirConstants.UrlResearchSubjectIdentifier. Null for subjects that predate that identifier
+    /// RecruIT.List.Services.Fhir.FhirVocabulary.UrlResearchSubjectIdentifier. Null for subjects that predate that identifier
     /// being set by query-sql-on-fhir.
     /// </summary>
     public static string? GetResearchSubjectIdentifierToken(this ResearchSubject subject) =>
         subject.Identifier?.FirstOrDefault(i =>
-            i.System == FhirConstants.UrlResearchSubjectIdentifier
+            i.System == FhirVocabulary.UrlResearchSubjectIdentifier
         )
             is { System: { Length: > 0 } system, Value: { Length: > 0 } value }
             ? $"{system}|{value}"
@@ -74,6 +88,12 @@ internal static class FhirBundleHelpers
 
     public static string GetStudyAcronym(this ResearchStudy study) =>
         study.GetMiiExStudieAkronym()?.Value is { Length: > 0 } acronym ? acronym : string.Empty;
+
+    /// <summary>The acronym, else the title, else the id - for naming a study in a list of them.</summary>
+    public static string GetStudyDisplayName(this ResearchStudy study) =>
+        study.GetStudyAcronym() is { Length: > 0 } acronym
+            ? acronym
+            : study.Title ?? study.Id ?? "?";
 
     /// <summary>Decodes a criterion Library's SQL source from its content attachment.</summary>
     public static string? GetSqlText(this Library library) =>
@@ -126,8 +146,8 @@ internal static class FhirBundleHelpers
 
     private static bool IsMedicalRecordNumber(Identifier identifier) =>
         identifier.Type?.Coding.Any(c =>
-            c.System == FhirConstants.SystemIdentifierType
-            && c.Code == FhirConstants.IdentifierTypeMedicalRecordNumber
+            c.System == FhirVocabulary.SystemIdentifierType
+            && c.Code == FhirVocabulary.IdentifierTypeMedicalRecordNumber
         )
             is true;
 }

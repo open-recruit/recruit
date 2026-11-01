@@ -31,7 +31,7 @@ namespace RecruIT.List.Services.Notify;
 /// </summary>
 public sealed class NotificationSenderService(
     IDbContextFactory<AppDbContext> dbContextFactory,
-    ScreeningListService screeningListService,
+    TrialListResolver trialListResolver,
     TrialAccessService accessService,
     IOptions<EmailNotificationOptions> mailerOptions,
     IOptions<AuthOptions> authOptions,
@@ -77,12 +77,63 @@ public sealed class NotificationSenderService(
             .Select(d => d.NotificationSubscriptionId)
             .Distinct()
             .ToListAsync(ct);
-
         if (pendingSubscriptionIds.Count == 0)
         {
             return;
         }
 
+        var (dueSubscriptionIds, toCleanUpSubscriptionIds) = await SortPendingSubscriptionsAsync(
+            db,
+            pendingSubscriptionIds,
+            now,
+            ct
+        );
+        await RemovePendingDeliveriesAsync(db, toCleanUpSubscriptionIds, ct);
+
+        if (dueSubscriptionIds.Count == 0)
+        {
+            await db.SaveChangesAsync(ct); // persists any cleanup above
+            return;
+        }
+
+        var due = await LoadDueAsync(db, dueSubscriptionIds, ct);
+
+        // One SMTP session for every due recipient this tick, rather than reconnecting and
+        // re-authenticating per recipient - real SMTP relays commonly rate-limit new connections
+        // per source, so a batch of digests is exactly the kind of connection burst that trips it.
+        await using var batch = await channel.BeginBatchAsync(ct: ct);
+
+        foreach (var group in due.Deliveries.GroupBy(d => d.NotificationSubscriptionId))
+        {
+            await SendDigestAsync(db, batch, group.Key, [.. group], due, now, ct);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private enum Verdict
+    {
+        /// <summary>Due a send right now.</summary>
+        Send,
+
+        /// <summary>Not due yet, or not possible to say when it is - left alone.</summary>
+        Wait,
+
+        /// <summary>Gone, or no longer allowed - its pending deliveries are removed.</summary>
+        CleanUp,
+    }
+
+    /// <summary>
+    /// Splits the subscriptions with a pending email into the ones to send to now and the ones
+    /// whose pending deliveries are to be removed; the rest wait for their slot.
+    /// </summary>
+    private async Task<(List<Guid> Due, List<Guid> ToCleanUp)> SortPendingSubscriptionsAsync(
+        AppDbContext db,
+        List<Guid> pendingSubscriptionIds,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
         var subscriptionsById = await db
             .NotificationSubscriptions.Where(s => pendingSubscriptionIds.Contains(s.Id))
             .ToDictionaryAsync(s => s.Id, ct);
@@ -111,73 +162,126 @@ public sealed class NotificationSenderService(
             )
             : null;
 
-        var toCleanUpSubscriptionIds = new List<Guid>();
-        var dueSubscriptionIds = new List<Guid>();
+        var due = new List<Guid>();
+        var toCleanUp = new List<Guid>();
         foreach (var subscriptionId in pendingSubscriptionIds)
         {
-            if (!subscriptionsById.TryGetValue(subscriptionId, out var subscription))
+            subscriptionsById.TryGetValue(subscriptionId, out var subscription);
+            var verdict = Judge(
+                subscription,
+                grantedPairs,
+                lastSentBySubscription.GetValueOrDefault(subscriptionId),
+                now
+            );
+            switch (verdict)
             {
-                // Unsubscribed since these were queued - don't email them, just clean up rather
-                // than leaving them to be re-checked (and re-orphaned) forever.
-                toCleanUpSubscriptionIds.Add(subscriptionId);
-                continue;
+                case Verdict.Send:
+                    due.Add(subscriptionId);
+                    break;
+                case Verdict.CleanUp:
+                    toCleanUp.Add(subscriptionId);
+                    break;
             }
-
-            var hasAccess =
-                grantedPairs is null
-                || grantedPairs.Contains((subscription.SubjectId, subscription.TrialIdentifier))
-                || grantedPairs.Contains((subscription.Email, subscription.TrialIdentifier));
-            if (!hasAccess)
-            {
-                // Trial access was revoked since these were queued - same cleanup as an
-                // unsubscribe for the pending deliveries, but the subscription row itself is left
-                // alone in case access is restored later.
-                toCleanUpSubscriptionIds.Add(subscriptionId);
-                continue;
-            }
-
-            if (subscription.Frequency != NotificationFrequency.Instant)
-            {
-                var lastSent =
-                    lastSentBySubscription.GetValueOrDefault(subscriptionId)
-                    ?? subscription.CreatedAt;
-
-                var nextSlot = NotificationScheduling.ComputeEmailScheduledFor(
-                    subscription.Frequency,
-                    subscription.DayOfWeek,
-                    subscription.TimeOfDay,
-                    subscription.TimeZoneId,
-                    lastSent
-                );
-
-                if (nextSlot > now)
-                {
-                    continue;
-                }
-            }
-
-            dueSubscriptionIds.Add(subscriptionId);
         }
 
-        if (toCleanUpSubscriptionIds.Count > 0)
+        return (due, toCleanUp);
+    }
+
+    private Verdict Judge(
+        NotificationSubscription? subscription,
+        IReadOnlySet<(string Identity, string TrialToken)>? grantedPairs,
+        DateTimeOffset? lastSentAt,
+        DateTimeOffset now
+    )
+    {
+        if (subscription is null)
         {
-            var toRemove = await db
-                .NotificationDeliveries.Where(d =>
-                    toCleanUpSubscriptionIds.Contains(d.NotificationSubscriptionId)
-                    && d.Channel == NotificationChannel.Email
-                    && d.SentAt == null
-                )
-                .ToListAsync(ct);
-            db.NotificationDeliveries.RemoveRange(toRemove);
+            // Unsubscribed since these were queued - don't email them, just clean up rather
+            // than leaving them to be re-checked (and re-orphaned) forever.
+            return Verdict.CleanUp;
         }
 
-        if (dueSubscriptionIds.Count == 0)
+        var hasAccess =
+            grantedPairs is null
+            || grantedPairs.Contains((subscription.SubjectId, subscription.TrialIdentifier))
+            || grantedPairs.Contains((subscription.Email, subscription.TrialIdentifier));
+        if (!hasAccess)
         {
-            await db.SaveChangesAsync(ct); // persists any cleanup above
+            // Trial access was revoked since these were queued - same cleanup as an
+            // unsubscribe for the pending deliveries, but the subscription row itself is left
+            // alone in case access is restored later.
+            return Verdict.CleanUp;
+        }
+
+        if (subscription.Frequency == NotificationFrequency.Instant)
+        {
+            return Verdict.Send;
+        }
+
+        DateTimeOffset nextSlot;
+        try
+        {
+            nextSlot = NotificationScheduling.ComputeEmailScheduledFor(
+                subscription.Frequency,
+                subscription.DayOfWeek,
+                subscription.TimeOfDay,
+                subscription.TimeZoneId,
+                lastSentAt ?? subscription.CreatedAt
+            );
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            // E.g. a time zone that no longer exists, or a Daily subscription with no time of day.
+            // One subscription like that must not stop everyone else's digests - it's skipped (and
+            // reported every tick until someone fixes or removes it).
+            logger.LogError(
+                ex,
+                "Cannot work out when subscription {SubscriptionId} ({Frequency}, time zone {TimeZoneId}) is next due - skipping it",
+                subscription.Id,
+                subscription.Frequency,
+                subscription.TimeZoneId
+            );
+            return Verdict.Wait;
+        }
+
+        return nextSlot > now ? Verdict.Wait : Verdict.Send;
+    }
+
+    private static async Task RemovePendingDeliveriesAsync(
+        AppDbContext db,
+        List<Guid> subscriptionIds,
+        CancellationToken ct
+    )
+    {
+        if (subscriptionIds.Count == 0)
+        {
             return;
         }
 
-        var due = await db
+        var toRemove = await db
+            .NotificationDeliveries.Where(d =>
+                subscriptionIds.Contains(d.NotificationSubscriptionId)
+                && d.Channel == NotificationChannel.Email
+                && d.SentAt == null
+            )
+            .ToListAsync(ct);
+        db.NotificationDeliveries.RemoveRange(toRemove);
+    }
+
+    /// <summary>What a run needs to know to word and send the emails of its due subscriptions.</summary>
+    private sealed record DueDeliveries(
+        List<NotificationDelivery> Deliveries,
+        Dictionary<Guid, NotificationEvent> Events,
+        IReadOnlyDictionary<string, (string ListId, string StudyAcronym)?> ListInfoByTrial
+    );
+
+    private async Task<DueDeliveries> LoadDueAsync(
+        AppDbContext db,
+        List<Guid> dueSubscriptionIds,
+        CancellationToken ct
+    )
+    {
+        var deliveries = await db
             .NotificationDeliveries.Where(d =>
                 d.Channel == NotificationChannel.Email
                 && d.SentAt == null
@@ -185,7 +289,7 @@ public sealed class NotificationSenderService(
             )
             .ToListAsync(ct);
 
-        var eventIds = due.Select(d => d.NotificationEventId).Distinct().ToList();
+        var eventIds = deliveries.Select(d => d.NotificationEventId).Distinct().ToList();
         var events = await db
             .NotificationEvents.AsNoTracking()
             .Where(e => eventIds.Contains(e.Id))
@@ -195,111 +299,144 @@ public sealed class NotificationSenderService(
         // share an event's trial too) - resolve each trial's current acronym at most once for this
         // whole tick rather than once per delivery. Where the email's link leads is resolved
         // separately, at click time (see Program.cs's /notifications/email endpoint).
-        var listInfoByTrial = await screeningListService.ResolveListsForTrialsAsync(
-            due.Where(d => events.ContainsKey(d.NotificationEventId))
+        var listInfoByTrial = await trialListResolver.ResolveListsForTrialsAsync(
+            deliveries
+                .Where(d => events.ContainsKey(d.NotificationEventId))
                 .Select(d => events[d.NotificationEventId].TrialIdentifier),
             ct
         );
 
-        // One SMTP session for every due recipient this tick, rather than reconnecting and
-        // re-authenticating per recipient - real SMTP relays commonly rate-limit new connections
-        // per source, so a batch of digests is exactly the kind of connection burst that trips it.
-        await using var batch = await channel.BeginBatchAsync(ct: ct);
+        return new DueDeliveries(deliveries, events, listInfoByTrial);
+    }
 
-        foreach (var group in due.GroupBy(d => d.NotificationSubscriptionId))
+    /// <summary>
+    /// Sends one subscriber's pending deliveries as a single digest email, and records the outcome:
+    /// sent, or failed to be retried next tick (or given up on once too old).
+    /// </summary>
+    private async Task SendDigestAsync(
+        AppDbContext db,
+        INotificationBatch batch,
+        Guid subscriptionId,
+        List<NotificationDelivery> deliveries,
+        DueDeliveries due,
+        DateTimeOffset now,
+        CancellationToken ct
+    )
+    {
+        var (includedDeliveries, acronym) = DescribeIncluded(deliveries, due);
+        if (acronym is null)
         {
-            var deliveries = group.ToList();
-            var recipientEmail = deliveries[0].Email;
+            return;
+        }
 
-            var acronyms = new List<string>();
-            var includedDeliveries = new List<NotificationDelivery>();
-            foreach (var delivery in deliveries)
+        var subject = string.Format(mailerOptions.Value.SubjectTemplate, acronym);
+        var digestId = Guid.NewGuid();
+        var html = RenderHtml(includedDeliveries.Count, acronym, EmailDigestLink(digestId));
+
+        var sendStart = Stopwatch.GetTimestamp();
+        try
+        {
+            await batch.SendAsync(deliveries[0].Email, subject, html, ct);
+            metrics.RecordEmailSend(Stopwatch.GetElapsedTime(sendStart), succeeded: true);
+            var sentAt = DateTimeOffset.UtcNow;
+            foreach (var delivery in includedDeliveries)
             {
-                if (!events.TryGetValue(delivery.NotificationEventId, out var notificationEvent))
-                {
-                    continue;
-                }
-
-                if (
-                    !listInfoByTrial.TryGetValue(
-                        notificationEvent.TrialIdentifier,
-                        out var listInfo
-                    ) || listInfo is null
-                )
-                {
-                    logger.LogWarning(
-                        "Could not resolve a screening list for trial {TrialIdentifier} - skipping delivery {DeliveryId} this tick",
-                        notificationEvent.TrialIdentifier,
-                        delivery.Id
-                    );
-                    continue;
-                }
-
-                acronyms.Add(listInfo.Value.StudyAcronym);
-                includedDeliveries.Add(delivery);
+                delivery.SentAt = sentAt;
+                delivery.EmailDigestId = digestId;
             }
+        }
+        // The run being cancelled (the app shutting down) isn't a failed send: it ends the run
+        // instead of being counted against this recipient and retried against the next. A send
+        // that merely timed out is also an OperationCanceledException, but not of our token.
+        catch (Exception ex)
+            when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
+        {
+            metrics.RecordEmailSend(Stopwatch.GetElapsedTime(sendStart), succeeded: false);
+            logger.LogError(
+                ex,
+                "Failed to send notification email for subscription {SubscriptionId} ({Count} deliveries) - will retry next tick",
+                subscriptionId,
+                deliveries.Count
+            );
+            DropStale(db, subscriptionId, includedDeliveries, due.Events, now);
+        }
 
-            if (includedDeliveries.Count == 0)
+        // Recorded as soon as this recipient's email is out, not once at the end: whatever
+        // stops the run later (a failure, the app shutting down) must not make the next run send
+        // it again. CancellationToken.None because an email that is already sent has to be
+        // recorded even if the run is being cancelled.
+        await db.SaveChangesAsync(CancellationToken.None);
+    }
+
+    /// <summary>
+    /// The deliveries a digest can be written for - those whose event is known and whose trial's
+    /// screening list still resolves - and that trial's acronym (null if there are none). They are
+    /// all one subscription's, and a subscription is to one trial, so there is only ever one.
+    /// </summary>
+    private (List<NotificationDelivery> Included, string? Acronym) DescribeIncluded(
+        List<NotificationDelivery> deliveries,
+        DueDeliveries due
+    )
+    {
+        var included = new List<NotificationDelivery>();
+        string? acronym = null;
+        foreach (var delivery in deliveries)
+        {
+            if (!due.Events.TryGetValue(delivery.NotificationEventId, out var notificationEvent))
             {
                 continue;
             }
 
-            var distinctAcronyms = acronyms.Distinct().ToList();
-            var subjectAcronym =
-                distinctAcronyms.Count == 1
-                    ? distinctAcronyms[0]
-                    : $"{distinctAcronyms.Count} trials";
-            var subject = string.Format(mailerOptions.Value.SubjectTemplate, subjectAcronym);
-            var digestId = Guid.NewGuid();
-            var html = RenderHtml(
-                includedDeliveries.Count,
-                distinctAcronyms,
-                EmailDigestLink(digestId)
-            );
-
-            var sendStart = Stopwatch.GetTimestamp();
-            try
+            if (
+                !due.ListInfoByTrial.TryGetValue(
+                    notificationEvent.TrialIdentifier,
+                    out var listInfo
+                ) || listInfo is null
+            )
             {
-                await batch.SendAsync(recipientEmail, subject, html, ct);
-                metrics.RecordEmailSend(Stopwatch.GetElapsedTime(sendStart), succeeded: true);
-                var sentAt = DateTimeOffset.UtcNow;
-                foreach (var delivery in includedDeliveries)
-                {
-                    delivery.SentAt = sentAt;
-                    delivery.EmailDigestId = digestId;
-                }
-            }
-            catch (Exception ex)
-            {
-                metrics.RecordEmailSend(Stopwatch.GetElapsedTime(sendStart), succeeded: false);
-                logger.LogError(
-                    ex,
-                    "Failed to send notification email for subscription {SubscriptionId} ({Count} deliveries) - will retry next tick",
-                    group.Key,
-                    deliveries.Count
+                logger.LogWarning(
+                    "Could not resolve a screening list for trial {TrialIdentifier} - skipping delivery {DeliveryId} this tick",
+                    notificationEvent.TrialIdentifier,
+                    delivery.Id
                 );
-
-                var stale = includedDeliveries
-                    .Where(d =>
-                        events.TryGetValue(d.NotificationEventId, out var e)
-                        && now - e.OccurredAt > MaxDeliveryAge
-                    )
-                    .ToList();
-                if (stale.Count > 0)
-                {
-                    logger.LogWarning(
-                        "Giving up on {Count} notification deliveries for subscription {SubscriptionId} - pending longer than {MaxAgeDays} days with repeated send failures",
-                        stale.Count,
-                        group.Key,
-                        MaxDeliveryAge.TotalDays
-                    );
-                    db.NotificationDeliveries.RemoveRange(stale);
-                    metrics.RecordEmailDeliveriesDropped(stale.Count);
-                }
+                continue;
             }
+
+            acronym ??= listInfo.Value.StudyAcronym;
+            included.Add(delivery);
         }
 
-        await db.SaveChangesAsync(ct);
+        return (included, acronym);
+    }
+
+    /// <summary>Removes the deliveries that have now failed to send for longer than MaxDeliveryAge.</summary>
+    private void DropStale(
+        AppDbContext db,
+        Guid subscriptionId,
+        List<NotificationDelivery> includedDeliveries,
+        Dictionary<Guid, NotificationEvent> events,
+        DateTimeOffset now
+    )
+    {
+        var stale = includedDeliveries
+            .Where(d =>
+                events.TryGetValue(d.NotificationEventId, out var e)
+                && now - e.OccurredAt > MaxDeliveryAge
+            )
+            .ToList();
+        if (stale.Count == 0)
+        {
+            return;
+        }
+
+        logger.LogWarning(
+            "Giving up on {Count} notification deliveries for subscription {SubscriptionId} - pending longer than {MaxAgeDays} days with repeated send failures",
+            stale.Count,
+            subscriptionId,
+            MaxDeliveryAge.TotalDays
+        );
+        db.NotificationDeliveries.RemoveRange(stale);
+        metrics.RecordEmailDeliveriesDropped(stale.Count);
     }
 
     /// <summary>
@@ -320,11 +457,15 @@ public sealed class NotificationSenderService(
         const string sampleAcronym = "TEST-TRIAL";
 
         var subject = "[Test] " + string.Format(mailerOptions.Value.SubjectTemplate, sampleAcronym);
-        var html = RenderHtml(1, [sampleAcronym], EmailDigestLink(Guid.NewGuid()));
+        var html = RenderHtml(1, sampleAcronym, EmailDigestLink(Guid.NewGuid()));
 
         await using var batch = await channel.BeginBatchAsync(protocolLog, ct);
         await batch.SendAsync(recipientEmail, subject, html, ct);
     }
+
+    /// <summary>Why a test send failed, beyond the exception's message - see INotificationChannel.DescribeFailure.</summary>
+    public IReadOnlyList<FailureDetail> DescribeSendFailure(Exception ex) =>
+        channel.DescribeFailure(ex);
 
     /// <summary>The link a digest email's button points at - see Program.cs's /notifications/email endpoint.</summary>
     private string EmailDigestLink(Guid digestId) =>
@@ -339,11 +480,11 @@ public sealed class NotificationSenderService(
     /// </summary>
     private static string RenderHtml(
         int numNewSubjects,
-        IReadOnlyList<string> studyAcronyms,
+        string studyAcronym,
         string screeningListLink
     )
     {
-        var model = new DigestTemplateModel(numNewSubjects, studyAcronyms, screeningListLink);
+        var model = new DigestTemplateModel(numNewSubjects, studyAcronym, screeningListLink);
         var context = new TemplateContext(model, DigestTemplateOptions);
         var mjml = DigestTemplate.Render(context, HtmlEncoder.Default);
 
@@ -388,7 +529,7 @@ public sealed class NotificationSenderService(
 
     private sealed record DigestTemplateModel(
         int NumNewSubjects,
-        IReadOnlyList<string> StudyAcronyms,
+        string StudyAcronym,
         string ScreeningListLink
     );
 }

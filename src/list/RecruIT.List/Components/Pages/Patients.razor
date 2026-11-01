@@ -1,6 +1,7 @@
 @page "/patients"
 @attribute [Authorize]
 @inject ScreeningListService ScreeningListService
+@inject ErrorReporter Errors
 @inject TrialAccessService AccessService
 @inject BreadcrumbState BreadcrumbState
 @inject IStringLocalizer<SharedResources> Localizer
@@ -103,13 +104,9 @@ else
             _user = await AuthStateTask.GetUserAsync();
             _patients = [.. await ScreeningListService.GetPatientsAcrossTrialsAsync(_user)];
         }
-        catch (FhirAccessException ex)
+        catch (Exception ex)
         {
-            _errorMessage = ex.Message;
-        }
-        catch (Exception)
-        {
-            _errorMessage = Localizer["App.PatientsPage.LoadErrorFallback"];
+            _errorMessage = Errors.Report(ex, "load the patient overview", Localizer["App.PatientsPage.LoadErrorFallback"]);
         }
         finally
         {

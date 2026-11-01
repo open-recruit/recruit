@@ -1,6 +1,8 @@
 @page "/admin/criteria"
 @attribute [Authorize]
 @inject EligibilityCriteriaService CriteriaService
+@inject AdminRoles Admins
+@inject ErrorReporter Errors
 @inject BreadcrumbState BreadcrumbState
 @inject DialogService DialogService
 @inject ToastService Toast
@@ -273,7 +275,7 @@ else
     protected override async Task OnInitializedAsync()
     {
         _user = await AuthStateTask.GetUserAsync();
-        _isAdmin = TrialAccessService.IsAdmin(_user);
+        _isAdmin = Admins.IsAdmin(_user);
 
         BreadcrumbState.Set(
             new BreadcrumbItem(Localizer["App.Common.AllTrialsBreadcrumb"], "/"),
@@ -291,11 +293,11 @@ else
     {
         try
         {
-            _libraries = [.. await CriteriaService.SearchLibrariesAsync()];
+            _libraries = [.. await CriteriaService.SearchLibrariesAsync(_user)];
         }
         catch (Exception ex)
         {
-            _libraryLoadErrorMessage = ex.Message;
+            _libraryLoadErrorMessage = Errors.Report(ex, "load the criterion libraries");
         }
         finally
         {
@@ -338,14 +340,14 @@ else
         _studyCriteriaLoading = true;
         try
         {
-            var criteria = await CriteriaService.GetStudyCriteriaAsync(studyId);
+            var criteria = await CriteriaService.GetStudyCriteriaAsync(studyId, _user);
             _studyCriteria.AddRange(criteria);
             _criteria.InsertRange(0, criteria);
         }
         catch (Exception ex)
         {
             _studyDraft = new ResearchStudyDraft();
-            Toast.Error(ex.Message, Localizer["App.CriteriaManager.StudyCriteriaLoadErrorTitle"]);
+            Toast.Error(Errors.Report(ex, "load the study's criteria"), Localizer["App.CriteriaManager.StudyCriteriaLoadErrorTitle"]);
         }
         finally
         {
@@ -370,12 +372,12 @@ else
         _submitting = true;
         try
         {
-            await CriteriaService.SubmitAsync(_studyDraft, _criteria);
+            await CriteriaService.SubmitAsync(_studyDraft, _criteria, _user);
             Toast.Success(Localizer["App.CriteriaManager.SubmitSuccessMessage"], Localizer["App.Common.Saved"]);
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.CriteriaManager.SubmitErrorTitle"]);
+            Toast.Error(Errors.Report(ex, "submit the eligibility criteria"), Localizer["App.CriteriaManager.SubmitErrorTitle"]);
         }
         finally
         {

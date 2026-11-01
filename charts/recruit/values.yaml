@@ -285,14 +285,16 @@ list:
         name: ""
         # -- key inside the existing secret
         key: "oidc-client-secret"
-      # -- the claim type used to map roles from the ID token, e.g. `role` or `realm_access.roles`
+      # -- the top-level ID token claim holding the user's roles. A path into a nested claim, such as
+      # `realm_access.roles`, matches nothing
       roleClaimType: "role"
 
   notifications:
     # -- a pending recommendation is highlighted as stalled if untouched for this many days
     stalledLeadWindowDays: 14
-    # -- how often, in seconds, list scans for screening list changes to notify about
-    scanIntervalSeconds: 60
+    # -- when list scans for screening list changes to notify about: a cron expression in UTC with five
+    # fields (minute first) or six (seconds first). Every minute by default.
+    scanSchedule: "* * * * *"
     testing:
       # -- adds a button to the admin-only Notification Test page that removes a patient from a trial's
       # screening list and adds them back, notifying every subscriber of that trial for real, in the app

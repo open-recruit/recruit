@@ -2,6 +2,7 @@ using System.Security.Claims;
 using System.Text.Encodings.Web;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.Options;
+using RecruIT.List.Services.Auth;
 
 namespace RecruIT.List.Services.Access;
 
@@ -16,7 +17,8 @@ namespace RecruIT.List.Services.Access;
 public sealed class DevBypassAuthenticationHandler(
     IOptionsMonitor<AuthenticationSchemeOptions> options,
     ILoggerFactory logger,
-    UrlEncoder encoder
+    UrlEncoder encoder,
+    AdminRoles adminRoles
 ) : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
 {
     public const string SchemeName = "DevBypass";
@@ -29,7 +31,8 @@ public sealed class DevBypassAuthenticationHandler(
                 new Claim("sub", "dev-admin"),
                 new Claim("preferred_username", "dev-admin"),
                 new Claim("email", "dev-admin@localhost"),
-                .. TrialAccessService.AdminRoles.Select(role => new Claim("role", role)),
+                new Claim(ClaimsPrincipalExtensions.EmailTrustedClaimType, "true"),
+                .. adminRoles.Roles.Select(role => new Claim("role", role)),
             ],
             authenticationType: SchemeName,
             nameType: "preferred_username",

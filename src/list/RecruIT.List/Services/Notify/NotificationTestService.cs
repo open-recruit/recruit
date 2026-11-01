@@ -13,7 +13,6 @@ using RecruIT.List.Resources;
 using RecruIT.List.Services.Access;
 using RecruIT.List.Services.Fhir;
 using FhirList = Hl7.Fhir.Model.List;
-using ListFhirConstants = RecruIT.List.Services.Fhir.FhirConstants;
 using Task = System.Threading.Tasks.Task;
 
 namespace RecruIT.List.Services.Notify;
@@ -32,7 +31,8 @@ public sealed class NotificationTestService(
     IDbContextFactory<AppDbContext> dbContextFactory,
     IRecurringJobManager recurringJobManager,
     IOptions<NotificationTestingOptions> options,
-    IStringLocalizer<SharedResources> localizer
+    IStringLocalizer<SharedResources> localizer,
+    AdminRoles adminRoles
 )
 {
     /// <summary>
@@ -42,7 +42,7 @@ public sealed class NotificationTestService(
     private const int MaxRestoreAttempts = 3;
 
     public bool IsAvailable(ClaimsPrincipal user) =>
-        options.Value.Enabled && TrialAccessService.IsAdmin(user);
+        options.Value.Enabled && adminRoles.IsAdmin(user);
 
     public async Task<int> CountSubscribersAsync(
         TrialIdentifier trialIdentifier,
@@ -80,7 +80,7 @@ public sealed class NotificationTestService(
         var list = await ReadListAsync(client, listId, ct);
         var entry =
             list.Entry.FirstOrDefault(e => e.Item.GetReferencedId() == researchSubjectId)
-            ?? throw new InvalidOperationException(
+            ?? throw new UserFacingException(
                 localizer["App.NotificationTest.ReRecommendNotOnList"]
             );
         var reference = entry.Item.Reference!;
@@ -94,7 +94,7 @@ public sealed class NotificationTestService(
         }
         catch (FhirOperationException ex) when (IsVersionConflict(ex))
         {
-            throw new InvalidOperationException(
+            throw new UserFacingException(
                 localizer["App.NotificationTest.ReRecommendConflict"],
                 ex
             );
@@ -154,7 +154,12 @@ public sealed class NotificationTestService(
                 return;
             }
             catch (FhirOperationException ex)
-                when (IsVersionConflict(ex) && attempt < MaxRestoreAttempts) { }
+                when (IsVersionConflict(ex) && attempt < MaxRestoreAttempts)
+            {
+                // the List changed since this attempt's read - retry against a fresh one; the last
+                // attempt's conflict propagates instead.
+                continue;
+            }
         }
     }
 
@@ -173,15 +178,13 @@ public sealed class NotificationTestService(
         CancellationToken ct
     )
     {
-        var studyId = list.GetReferenceExtension(ListFhirConstants.UrlListBelongsToStudy)
+        var studyId = list.GetReferenceExtension(FhirVocabulary.UrlListBelongsToStudy)
             ?.GetReferencedId();
         var study = studyId is not null
             ? await client.ReadAsync<ResearchStudy>($"ResearchStudy/{studyId}", ct: ct)
             : null;
         return study?.GetTrialIdentifier()?.ToToken()
-            ?? throw new InvalidOperationException(
-                localizer["App.NotificationTest.ReRecommendNoTrial"]
-            );
+            ?? throw new UserFacingException(localizer["App.NotificationTest.ReRecommendNoTrial"]);
     }
 
     private async Task<int> CountEventsAsync(

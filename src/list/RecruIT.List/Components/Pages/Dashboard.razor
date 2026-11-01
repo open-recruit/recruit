@@ -1,6 +1,7 @@
 @page "/"
 @attribute [Authorize]
 @inject ScreeningListService ScreeningListService
+@inject ErrorReporter Errors
 @inject ToastService Toast
 @inject BreadcrumbState BreadcrumbState
 @inject IStringLocalizer<SharedResources> Localizer
@@ -72,13 +73,9 @@ else
         {
             _trials = [.. await ScreeningListService.GetAccessibleTrialsAsync(_user)];
         }
-        catch (FhirAccessException ex)
+        catch (Exception ex)
         {
-            _errorMessage = ex.Message;
-        }
-        catch (Exception)
-        {
-            _errorMessage = Localizer["App.Dashboard.LoadErrorFallback"];
+            _errorMessage = Errors.Report(ex, "load the trials", Localizer["App.Dashboard.LoadErrorFallback"]);
         }
         finally
         {

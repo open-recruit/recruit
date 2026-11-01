@@ -51,10 +51,7 @@ public sealed class ScreeningNoteTests(AppFixture app) : PageTest
         await Expect(Page.GetByText(original, new() { Exact = true })).ToBeVisibleAsync();
     }
 
-    /// <summary>
-    /// Pages are prerendered, so a click that lands before Blazor's circuit has connected does
-    /// nothing - retried until the patient dialog's note editor actually shows.
-    /// </summary>
+    /// <summary>Opens the first patient's dialog from the Patients page, with its note editor.</summary>
     private async Task OpenFirstPatientAsync()
     {
         await Page.GotoAsync($"{app.BaseUrl}/patients");
@@ -63,19 +60,10 @@ public sealed class ScreeningNoteTests(AppFixture app) : PageTest
             .Nth(2)
             .Locator("div > div")
             .First;
-        var noteEditor = Page.Locator(".ql-editor");
 
-        for (var attempt = 0; attempt < 20; attempt++)
-        {
-            await studyChip.ClickAsync();
-            try
-            {
-                await noteEditor.First.WaitForAsync(new() { Timeout = 1500 });
-                return;
-            }
-            catch (TimeoutException) { }
-        }
-
-        throw new TimeoutException("Clicking the first patient never opened the patient dialog.");
+        await studyChip.ClickUntilVisibleAsync(
+            Page.Locator(".ql-editor").First,
+            "Clicking the first patient never opened the patient dialog."
+        );
     }
 }

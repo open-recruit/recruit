@@ -156,21 +156,29 @@ public sealed class AppFixture : IAsyncLifetime
 
         while (DateTime.UtcNow < deadline)
         {
-            try
+            if (await IsReadyAsync(client))
             {
-                var response = await client.GetAsync($"{BaseUrl}/readyz");
-                if (response.IsSuccessStatusCode)
-                {
-                    return;
-                }
+                return;
             }
-            catch (HttpRequestException) { }
-            catch (TaskCanceledException) { }
 
             await Task.Delay(TimeSpan.FromMilliseconds(200));
         }
 
         throw new TimeoutException($"App did not become ready at '{BaseUrl}' within {timeout}.");
+    }
+
+    private async Task<bool> IsReadyAsync(HttpClient client)
+    {
+        try
+        {
+            using var response = await client.GetAsync($"{BaseUrl}/readyz");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException)
+        {
+            // not accepting connections yet, or too slow to answer while still starting up
+            return false;
+        }
     }
 
     private static int GetFreeTcpPort()

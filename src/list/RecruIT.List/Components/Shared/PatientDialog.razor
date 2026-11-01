@@ -1,4 +1,5 @@
 @inject ResearchSubjectService ResearchSubjectService
+@inject ErrorReporter Errors
 @inject PatientRecordService PatientRecordService
 @inject ToastService Toast
 @inject IStringLocalizer<SharedResources> Localizer
@@ -182,9 +183,10 @@
         {
             _criteria = await PatientRecordService.GetEligibilityCriteriaStatusAsync(Patient.PatientId, TrialIdentifier);
         }
-        catch
+        catch (Exception ex)
         {
             // Best-effort - an empty criteria list is preferable to blocking the dialog on a fetch failure.
+            Errors.Swallowed(ex, "load the patient's eligibility criteria");
             _criteria = [];
         }
         finally
@@ -212,7 +214,7 @@
         }
         catch (Exception ex)
         {
-            Toast.Error(ex.Message, Localizer["App.Toast.StatusUpdateError"]);
+            Toast.Error(Errors.Report(ex, "update the patient's status"), Localizer["App.Toast.StatusUpdateError"]);
         }
         finally
         {

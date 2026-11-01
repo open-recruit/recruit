@@ -18,6 +18,14 @@ public sealed class AuthOptions
     /// </summary>
     public bool Enabled { get; set; }
 
+    /// <summary>
+    /// Whether an email address only counts - for the grants given to it - when the identity
+    /// provider reports it as verified ("email_verified"). On by default: otherwise anyone able to
+    /// register at the IdP with someone else's address would get that person's access. Turn off only
+    /// for an IdP that doesn't send the claim and doesn't let users pick unverified addresses.
+    /// </summary>
+    public bool RequireVerifiedEmail { get; set; } = true;
+
     /// <summary>The deprecated single-role predecessor of Auth:AdminRoles, see ReadAdminRoles.</summary>
     public const string DeprecatedAdminRoleKey = $"{SectionName}:AdminRole";
 
@@ -50,7 +58,11 @@ public sealed class NotificationOptions
 {
     public const string SectionName = "Notifications";
 
-    public int ScanIntervalSeconds { get; set; } = 60;
+    /// <summary>
+    /// When the detector scans the screening lists for new candidates: a cron expression in UTC with
+    /// five fields (minute first) or six (seconds first). Every minute by default.
+    /// </summary>
+    public string ScanSchedule { get; set; } = "* * * * *";
 }
 
 /// <summary>
