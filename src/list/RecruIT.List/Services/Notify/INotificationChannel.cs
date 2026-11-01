@@ -24,7 +24,18 @@ public interface INotificationChannel
         Stream? protocolLog = null,
         CancellationToken ct = default
     );
+
+    /// <summary>
+    /// What the channel can tell about why opening a batch or sending failed beyond the exception's
+    /// own message - for email, the SMTP server's verdict or the socket-level cause - as labelled,
+    /// already localized details for the admin test page to list, so the page needn't know the
+    /// transport's exception types. Empty when there is nothing to add.
+    /// </summary>
+    IReadOnlyList<FailureDetail> DescribeFailure(Exception ex);
 }
+
+/// <summary>One labelled fact about a failure, see INotificationChannel.DescribeFailure.</summary>
+public sealed record FailureDetail(string Label, string Value);
 
 public interface INotificationBatch : IAsyncDisposable
 {

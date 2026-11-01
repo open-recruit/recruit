@@ -326,6 +326,10 @@ public sealed class NotificationSenderService(
         await batch.SendAsync(recipientEmail, subject, html, ct);
     }
 
+    /// <summary>Why a test send failed, beyond the exception's message - see INotificationChannel.DescribeFailure.</summary>
+    public IReadOnlyList<FailureDetail> DescribeSendFailure(Exception ex) =>
+        channel.DescribeFailure(ex);
+
     /// <summary>The link a digest email's button points at - see Program.cs's /notifications/email endpoint.</summary>
     private string EmailDigestLink(Guid digestId) =>
         mailerOptions.Value.PublicUrl($"notifications/email/{digestId}");

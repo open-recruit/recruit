@@ -26,7 +26,8 @@ public sealed class EmailNotificationChannelTests(MailDevFixture mailDev)
                     SmtpUsername = MailDevFixture.Username,
                     SmtpPassword = password,
                 }
-            )
+            ),
+            new FakeStringLocalizer()
         );
 
     [Fact]

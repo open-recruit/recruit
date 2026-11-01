@@ -1,8 +1,6 @@
 @page "/admin/notify-test"
 @attribute [Authorize]
-@using System.Net.Sockets
 @using System.Text
-@using MailKit.Net.Smtp
 @inject NotificationSenderService SenderService
 @inject AdminRoles Admins
 @inject ErrorReporter Errors
@@ -387,27 +385,7 @@ else
             (Localizer["App.NotificationTest.EmailLabel"], recipient),
         };
 
-        if (ex is SmtpCommandException command)
-        {
-            // The server's own verdict - e.g. 535 for rejected credentials, 550 for a refused mailbox.
-            details.Add((Localizer["App.NotificationTest.SmtpStatusCodeLabel"], $"{(int)command.StatusCode} ({command.StatusCode})"));
-            details.Add((Localizer["App.NotificationTest.SmtpErrorCodeLabel"], command.ErrorCode.ToString()));
-            if (command.Mailbox is not null)
-            {
-                details.Add((Localizer["App.NotificationTest.MailboxLabel"], command.Mailbox.Address));
-            }
-        }
-
-        // Connection failures (refused, DNS, timeout) usually arrive wrapped, so look past the
-        // outermost exception for the socket-level cause.
-        for (var inner = ex; inner is not null; inner = inner.InnerException)
-        {
-            if (inner is SocketException socket)
-            {
-                details.Add((Localizer["App.NotificationTest.SocketErrorLabel"], socket.SocketErrorCode.ToString()));
-                break;
-            }
-        }
+        details.AddRange(SenderService.DescribeSendFailure(ex).Select(d => (d.Label, d.Value)));
 
         // Exception.ToString() covers the type, message and stack trace of the whole inner
         // exception chain - everything a bug report or a support ticket would need.
