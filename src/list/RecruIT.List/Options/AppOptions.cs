@@ -59,10 +59,10 @@ public sealed class NotificationOptions
     public const string SectionName = "Notifications";
 
     /// <summary>
-    /// How often the detector scans the screening lists for new candidates. Rounded up to whole
-    /// minutes - see DetectionSchedule.
+    /// When the detector scans the screening lists for new candidates: a cron expression in UTC with
+    /// five fields (minute first) or six (seconds first). Every minute by default.
     /// </summary>
-    public int ScanIntervalSeconds { get; set; } = 60;
+    public string ScanSchedule { get; set; } = "* * * * *";
 }
 
 /// <summary>

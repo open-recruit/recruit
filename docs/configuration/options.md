@@ -120,9 +120,10 @@ See [Notifications](notifications.md) for how notifications work. They are sent 
 - `Notifications__Email__PublicBaseUrl`: the URL users open the screening list at, e.g. `https://recruit.example.com/`.
   Every link in the emails is built from it, so it must be reachable from where your users read their email.
 
-- `Notifications__ScanIntervalSeconds` (default `60`): how often the screening list checks for new candidates. Scans
-  are scheduled in whole minutes, so a value that isn't a multiple of 60 is rounded up, and one over an hour is
-  rounded up to whole hours (at most 23).
+- `Notifications__ScanSchedule` (default `* * * * *`, every minute): when the screening list checks for new candidates,
+  as a cron expression in UTC. It has five fields (minute, hour, day of month, month, day of week), or six with
+  seconds first. For example `*/5 * * * *` checks every 5 minutes and `0 6-18 * * *` on the hour from 06:00 to
+  18:00. A value that isn't a valid cron expression stops the screening list from starting.
 
 Due emails are sent every 5 minutes, which isn't configurable.
 

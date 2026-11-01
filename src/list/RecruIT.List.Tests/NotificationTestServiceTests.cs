@@ -24,7 +24,7 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
 {
     private readonly SqliteDbContextFactory _db = new();
     private readonly RecordedMetrics _metrics = new();
-    private readonly FakeRecurringJobManager _jobs = new();
+    private readonly RecordingRecurringJobManager _jobs = new();
     private readonly FhirTestData _data = new(fhir.CreateClient());
 
     public void Dispose()
@@ -213,22 +213,6 @@ public sealed class NotificationTestServiceTests(FhirServerFixture fhir) : IDisp
         CreateService().SendDueEmailsNow(Admin());
 
         Assert.Equal([NotificationSenderService.RecurringJobId], _jobs.Triggered);
-    }
-
-    private sealed class FakeRecurringJobManager : IRecurringJobManager
-    {
-        public List<string> Triggered { get; } = [];
-
-        public void AddOrUpdate(
-            string recurringJobId,
-            Job job,
-            string cronExpression,
-            RecurringJobOptions options
-        ) => throw new NotSupportedException();
-
-        public void Trigger(string recurringJobId) => Triggered.Add(recurringJobId);
-
-        public void RemoveIfExists(string recurringJobId) => throw new NotSupportedException();
     }
 
     /// <summary>The FHIR server failing whenever a Patient is read, and nothing else.</summary>

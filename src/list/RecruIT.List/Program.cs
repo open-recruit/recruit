@@ -360,36 +360,12 @@ app.Services.GetRequiredService<RecruitMetrics>();
 // yet this early.
 await using (var scope = app.Services.CreateAsyncScope())
 {
-    var recurringJobManager = scope.ServiceProvider.GetRequiredService<IRecurringJobManager>();
-    var scanIntervalSeconds = scope
-        .ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<NotificationOptions>>()
-        .Value.ScanIntervalSeconds;
-    var scanInterval = DetectionSchedule.IntervalFor(scanIntervalSeconds);
-    if (scanInterval != TimeSpan.FromSeconds(scanIntervalSeconds))
-    {
-        app.Logger.LogWarning(
-            "Notifications:ScanIntervalSeconds is {Configured}s, but the detector can only run every "
-                + "whole minute (or hour), so it runs every {Effective}",
-            scanIntervalSeconds,
-            scanInterval
-        );
-    }
-
-    recurringJobManager.AddOrUpdate<NotificationDetectorService>(
-        "detect-notification-events",
-        s => s.PollAllTrialsAsync(CancellationToken.None),
-        DetectionSchedule.CronFor(scanIntervalSeconds)
+    NotificationJobs.Register(
+        scope.ServiceProvider.GetRequiredService<IRecurringJobManager>(),
+        scope
+            .ServiceProvider.GetRequiredService<Microsoft.Extensions.Options.IOptions<NotificationOptions>>()
+            .Value.ScanSchedule
     );
-    recurringJobManager.AddOrUpdate<NotificationSenderService>(
-        NotificationSenderService.RecurringJobId,
-        s => s.SendDueAsync(CancellationToken.None),
-        Cron.MinuteInterval(5)
-    );
-    // AddOrUpdate only ever adds/updates - it never removes a job id that's stopped being
-    // registered, so the old "poll-screening-lists" recurring job (ScreeningListPollService, now
-    // deleted) would otherwise sit in Hangfire's storage forever, still firing every minute and
-    // failing to deserialize. Idempotent - a no-op once removed.
-    recurringJobManager.RemoveIfExists("poll-screening-lists");
 }
 
 // Keeps /metrics off the app's public-facing port: ASP.NET Core routing doesn't care which Kestrel
