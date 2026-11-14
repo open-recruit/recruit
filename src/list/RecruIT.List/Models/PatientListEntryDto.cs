@@ -53,6 +53,21 @@ public sealed class PatientListEntryDto
 
     public bool LastKnownLocationLoaded { get; set; }
 
+    /// <summary>
+    /// Populated lazily for the whole list at once (PatientRecordService.GetEligibilityCriteriaStatusByPatientAsync):
+    /// empty when the patient has no assessed criteria, null when they couldn't be loaded.
+    /// </summary>
+    public IReadOnlyList<CriterionStatusDto>? CriteriaStatuses { get; set; }
+
+    public bool CriteriaStatusesLoaded { get; set; }
+
+    /// <summary>
+    /// How many criteria the team still has to look at - not met, indeterminate or unknown - so
+    /// sorting the screening list by it brings the patients whose eligibility is least settled up
+    /// (or down) together. Null until loaded, or when loading failed.
+    /// </summary>
+    public int? OpenCriteriaCount => CriteriaStatuses?.Count(c => c.Met != true);
+
     /// <summary>Populated only in cross-trial views (e.g. the patient-centric Patients page) where a single patient can appear under several lists.</summary>
     public string? ListId { get; init; }
 

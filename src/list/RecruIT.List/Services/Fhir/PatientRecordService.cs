@@ -2,6 +2,7 @@ using System.Net;
 using Hl7.Fhir.Model;
 using Hl7.Fhir.Rest;
 using Microsoft.Extensions.Localization;
+using RecruIT.FhirConstants;
 using RecruIT.List.Models;
 using RecruIT.List.Resources;
 
@@ -152,46 +153,87 @@ public sealed class PatientRecordService(
         );
     }
 
-    /// <summary>
-    /// Per-criterion eligibility status for a patient within one trial - the Observations
-    /// EligibilityBundleBuilder emits per (patient, criterion), see
-    /// docs/trino/eligibility-criteria-design.md. `focus:ResearchStudy.identifier=` is a standard
-    /// chained reference search (no custom SearchParameter needed): it resolves the ResearchStudy
-    /// by its business identifier (TrialIdentifier) directly, without a separate id lookup.
-    /// </summary>
+    /// <summary>Per-criterion eligibility status for a patient within one trial, see GetEligibilityObservationsAsync.</summary>
     public async Task<IReadOnlyList<CriterionStatusDto>> GetEligibilityCriteriaStatusAsync(
         string patientId,
         TrialIdentifier trialIdentifier,
         CancellationToken ct = default
     )
     {
-        var client = clientFactory.CreateClient();
+        var observations = await GetEligibilityObservationsAsync(
+            $"subject=Patient/{patientId}&",
+            trialIdentifier,
+            ct
+        );
 
+        return observations
+            .Select(ToCriterionStatus)
+            .OrderBy(c => c.DisplayText, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+    }
+
+    /// <summary>
+    /// Every patient's per-criterion status within one trial, by Patient id - the same Observations
+    /// as GetEligibilityCriteriaStatusAsync, fetched in one search rather than one per patient so
+    /// the screening list can summarize them for every row. Patients without any Observation are
+    /// simply absent from the result.
+    /// </summary>
+    public async Task<
+        IReadOnlyDictionary<string, IReadOnlyList<CriterionStatusDto>>
+    > GetEligibilityCriteriaStatusByPatientAsync(
+        TrialIdentifier trialIdentifier,
+        CancellationToken ct = default
+    )
+    {
+        var observations = await GetEligibilityObservationsAsync(string.Empty, trialIdentifier, ct);
+
+        return observations
+            .Where(o => o.Subject.GetReferencedId() is not null)
+            .GroupBy(o => o.Subject.GetReferencedId()!)
+            .ToDictionary(
+                g => g.Key,
+                IReadOnlyList<CriterionStatusDto> (g) => [.. g.Select(ToCriterionStatus)]
+            );
+    }
+
+    /// <summary>
+    /// The trial's eligibility Observations EligibilityBundleBuilder emits per (patient, criterion),
+    /// see docs/trino/eligibility-criteria-design.md, narrowed by <paramref name="filter"/> (empty,
+    /// or search parameters ending in "&amp;"). `focus:ResearchStudy.identifier=` is a standard
+    /// chained reference search (no custom SearchParameter needed): it resolves the ResearchStudy
+    /// by its business identifier (TrialIdentifier) directly, without a separate id lookup.
+    /// </summary>
+    private async Task<List<Observation>> GetEligibilityObservationsAsync(
+        string filter,
+        TrialIdentifier trialIdentifier,
+        CancellationToken ct
+    )
+    {
         var query =
-            $"Observation?subject=Patient/{patientId}"
-            + $"&focus:ResearchStudy.identifier={Uri.EscapeDataString(trialIdentifier.ToToken())}"
-            + $"&category={Uri.EscapeDataString($"{FhirVocabulary.SystemObservationCategory}|{FhirVocabulary.ObservationCategoryEligibilityAssessment}")}";
+            $"Observation?{filter}"
+            + $"focus:ResearchStudy.identifier={Uri.EscapeDataString(trialIdentifier.ToToken())}"
+            + $"&category={Uri.EscapeDataString($"{FhirVocabulary.SystemObservationCategory}|{FhirVocabulary.ObservationCategoryEligibilityAssessment}")}"
+            + "&_count=500";
 
-        List<Resource> resources;
         try
         {
-            resources = await FhirBundleHelpers.GetAllPagesAsync(client, query, ct);
+            var resources = await FhirBundleHelpers.GetAllPagesAsync(
+                clientFactory.CreateClient(),
+                query,
+                ct
+            );
+            return [.. resources.OfType<Observation>()];
         }
         catch (Exception ex)
         {
             logger.LogError(
                 ex,
-                "Failed to fetch eligibility criteria status for Patient/{PatientId}",
-                patientId
+                "Failed to fetch eligibility criteria status ({Filter}) for trial {Trial}",
+                filter,
+                trialIdentifier.ToToken()
             );
             throw new FhirAccessException(localizer["App.Errors.CriteriaStatusLoadFailed"], ex);
         }
-
-        return resources
-            .OfType<Observation>()
-            .Select(ToCriterionStatus)
-            .OrderBy(c => c.DisplayText, StringComparer.OrdinalIgnoreCase)
-            .ToList();
     }
 
     /// <summary>
@@ -217,6 +259,7 @@ public sealed class PatientRecordService(
             Met = met,
             Indeterminate = indeterminate,
             Note = valueConcept?.Text,
+            LibraryId = observation.GetDerivedFromLibrary().GetReferencedId(),
         };
     }
 }

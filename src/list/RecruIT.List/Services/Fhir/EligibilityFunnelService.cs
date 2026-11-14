@@ -1,5 +1,6 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Localization;
+using RecruIT.FhirConstants;
 using RecruIT.List.Models;
 using RecruIT.List.Resources;
 
@@ -73,6 +74,9 @@ public sealed class EligibilityFunnelService(
             Label = isTotalPopulation ? null : population.Code?.Text,
             Count = population.Count!.Value,
             IsTotalPopulation = isTotalPopulation,
+            LibraryId = isTotalPopulation
+                ? null
+                : population.GetDerivedFromLibrary().GetReferencedId(),
         };
     }
 }

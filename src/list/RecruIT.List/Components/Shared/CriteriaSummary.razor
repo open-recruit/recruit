@@ -1,0 +1,46 @@
+@inject IStringLocalizer<SharedResources> Localizer
+
+@* One screening-list cell: how a patient stands against the trial's criteria, compact enough to scan
+   down a column. Settled patients read quietly ("All met"); the ones the team still has to look at
+   show what's open first, as icon + count, so they stand out of the column. *@
+@if (Criteria is null)
+{
+    <span class="bb:text-sm bb:text-muted-foreground">@Localizer["App.Criteria.Unavailable"]</span>
+}
+else if (Criteria.Count == 0)
+{
+    <span class="bb:text-muted-foreground" aria-hidden="true">&ndash;</span>
+    <span class="bb:sr-only">@Localizer["App.Criteria.NotAssessed"]</span>
+}
+else if (Counts is [(CriterionState.Met, _)])
+{
+    <span class="criteria-summary bb:text-muted-foreground">
+        <CriterionStatusIcon State="CriterionState.Met" Decorative="true" Size="14" />
+        @Localizer["App.Criteria.AllMet"]
+    </span>
+}
+else
+{
+    <span class="criteria-summary" title="@Description">
+        @foreach (var (state, count) in Counts)
+        {
+            <span class="criteria-summary-count @(state == CriterionState.Met ? "bb:text-muted-foreground" : null)" aria-hidden="true">
+                <CriterionStatusIcon State="state" Decorative="true" Size="14" />
+                @count
+            </span>
+        }
+        <span class="bb:sr-only">@Description</span>
+    </span>
+}
+
+@code {
+    /// <summary>The patient's per-criterion statuses: empty when none were assessed, null when they couldn't be loaded.</summary>
+    [Parameter, EditorRequired]
+    public required IReadOnlyList<CriterionStatusDto>? Criteria { get; set; }
+
+    private IReadOnlyList<(CriterionState State, int Count)> Counts =>
+        CriterionStateDisplay.CountByState(Criteria ?? []);
+
+    private string Description =>
+        string.Join(", ", Counts.Select(c => Localizer[CriterionStateDisplay.CountKey(c.State), c.Count].Value));
+}

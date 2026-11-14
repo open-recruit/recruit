@@ -172,9 +172,6 @@
   <data name="App.PatientList.ColumnName" xml:space="preserve">
     <value>Name</value>
   </data>
-  <data name="App.PatientList.NewIndicator" xml:space="preserve">
-    <value>New suggestion</value>
-  </data>
   <data name="App.PatientList.SystemIneligibleBadge" xml:space="preserve">
     <value>System: ineligible</value>
   </data>
@@ -287,22 +284,22 @@
     <value>Could not update notifications</value>
   </data>
   <data name="App.Status.Candidate" xml:space="preserve">
-    <value>candidate</value>
+    <value>Candidate</value>
   </data>
   <data name="App.Status.Screening" xml:space="preserve">
-    <value>screening</value>
+    <value>Screening</value>
   </data>
   <data name="App.Status.Eligible" xml:space="preserve">
-    <value>eligible</value>
+    <value>Eligible</value>
   </data>
   <data name="App.Status.Ineligible" xml:space="preserve">
-    <value>ineligible</value>
+    <value>Ineligible</value>
   </data>
   <data name="App.Status.OnStudy" xml:space="preserve">
-    <value>on-study</value>
+    <value>On study</value>
   </data>
   <data name="App.Status.Withdrawn" xml:space="preserve">
-    <value>withdrawn</value>
+    <value>Withdrawn</value>
   </data>
   <data name="App.Patient.Contact" xml:space="preserve">
     <value>Contact</value>
@@ -948,5 +945,56 @@
   </data>
   <data name="App.Subscription.SaveErrorTitle" xml:space="preserve">
     <value>Could not save notification preferences</value>
+  </data>
+  <data name="App.Criteria.CountMet" xml:space="preserve">
+    <value>{0} met</value>
+  </data>
+  <data name="App.Criteria.CountNotMet" xml:space="preserve">
+    <value>{0} not met</value>
+  </data>
+  <data name="App.Criteria.CountIndeterminate" xml:space="preserve">
+    <value>{0} indeterminate</value>
+  </data>
+  <data name="App.Criteria.CountUnknown" xml:space="preserve">
+    <value>{0} unknown</value>
+  </data>
+  <data name="App.Criteria.AllMet" xml:space="preserve">
+    <value>All met</value>
+  </data>
+  <data name="App.Criteria.NotAssessed" xml:space="preserve">
+    <value>Not assessed</value>
+  </data>
+  <data name="App.Criteria.Unavailable" xml:space="preserve">
+    <value>Not available</value>
+  </data>
+  <data name="App.PatientList.ColumnCriteria" xml:space="preserve">
+    <value>Criteria</value>
+  </data>
+  <data name="App.PatientList.NewIndicator" xml:space="preserve">
+    <value>New suggestion</value>
+  </data>
+  <data name="App.PatientList.New" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="App.PatientList.FilterLabel" xml:space="preserve">
+    <value>Filter patients by status</value>
+  </data>
+  <data name="App.PatientList.FilterAll" xml:space="preserve">
+    <value>All</value>
+  </data>
+  <data name="App.PatientList.NoMatchesTitle" xml:space="preserve">
+    <value>No matching patients</value>
+  </data>
+  <data name="App.PatientList.NoMatchesDescription" xml:space="preserve">
+    <value>No patient on this list matches the selected filter or search.</value>
+  </data>
+  <data name="App.PatientList.ShowAll" xml:space="preserve">
+    <value>Show all patients</value>
+  </data>
+  <data name="App.Patient.CriteriaSummary" xml:space="preserve">
+    <value>{0} of {1} met</value>
+  </data>
+  <data name="App.Patient.OtherCriteria" xml:space="preserve">
+    <value>Other criteria</value>
   </data>
 </root>

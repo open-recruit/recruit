@@ -1,47 +1,41 @@
 @inject IStringLocalizer<SharedResources> Localizer
 
-<span class="@IconColorClass" title="@TooltipText" aria-label="@TooltipText">
-    <LucideIcon Name="@IconName" Size="16" />
-</span>
+@* Decorative wherever its state is also spelled out as text next to it - aria-label on a plain span
+   is ignored by many screen readers, so the icon can't be the only place the state is said. *@
+@if (Decorative)
+{
+    <span class="@CriterionStateDisplay.ColorClass(State)" aria-hidden="true">
+        <LucideIcon Name="@CriterionStateDisplay.IconName(State)" Size="@Size" />
+    </span>
+}
+else
+{
+    <span class="@CriterionStateDisplay.ColorClass(State)" role="img" title="@TooltipText" aria-label="@TooltipText">
+        <LucideIcon Name="@CriterionStateDisplay.IconName(State)" Size="@Size" />
+    </span>
+}
 
 @code {
     [Parameter, EditorRequired]
-    public bool? Met { get; set; }
-
-    /// <summary>Only meaningful when Met is null - see CriterionStatusDto.Indeterminate.</summary>
-    [Parameter]
-    public bool Indeterminate { get; set; }
+    public CriterionState State { get; set; }
 
     /// <summary>Optional free-text explanation (CriterionStatusDto.Note), appended to the tooltip when present.</summary>
     [Parameter]
     public string? Note { get; set; }
 
-    private string IconName => (Met, Indeterminate) switch
-    {
-        (true, _) => "circle-check",
-        (false, _) => "circle-x",
-        (null, true) => "circle-alert",
-        (null, false) => "circle-question-mark",
-    };
+    /// <summary>True when the state is also shown as visible text, so the icon is hidden from assistive technology.</summary>
+    [Parameter]
+    public bool Decorative { get; set; }
 
-    // Lucide icons render with stroke="currentColor", so coloring only needs a CSS `color` on this
-    // wrapping span (see app.css) rather than a Class param on LucideIcon itself.
-    private string IconColorClass => (Met, Indeterminate) switch
-    {
-        (true, _) => "criterion-icon-met",
-        (false, _) => "criterion-icon-not-met",
-        (null, true) => "criterion-icon-indeterminate",
-        (null, false) => "criterion-icon-unknown",
-    };
+    [Parameter]
+    public int Size { get; set; } = 16;
 
-    private string LabelKey => (Met, Indeterminate) switch
+    private string TooltipText
     {
-        (true, _) => "App.Patient.CriterionMet",
-        (false, _) => "App.Patient.CriterionNotMet",
-        (null, true) => "App.Patient.CriterionIndeterminate",
-        (null, false) => "App.Patient.CriterionUnknown",
-    };
-
-    private string TooltipText =>
-        string.IsNullOrEmpty(Note) ? Localizer[LabelKey].Value : $"{Localizer[LabelKey].Value}: {Note}";
+        get
+        {
+            var label = Localizer[CriterionStateDisplay.LabelKey(State)].Value;
+            return string.IsNullOrEmpty(Note) ? label : $"{label}: {Note}";
+        }
+    }
 }

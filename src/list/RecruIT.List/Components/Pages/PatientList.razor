@@ -27,7 +27,7 @@ else if (_errorMessage is not null)
 }
 else if (_summary is not null)
 {
-    <div class="bb:flex bb:items-start bb:justify-between bb:gap-4">
+    <div class="bb:flex bb:flex-wrap bb:items-start bb:justify-between bb:gap-4">
         <div>
             @if (!string.IsNullOrEmpty(_summary.StudyTitle))
             {
@@ -37,17 +37,13 @@ else if (_summary is not null)
         <div class="bb:flex bb:shrink-0 bb:items-center bb:gap-2">
             @if (_summary.Criteria.Count > 0 || FunnelChartData is { Count: > 0 })
             {
-                @* Opened via OnClick rather than a BbSheetTrigger: the tooltip trigger already passes its own
-                   trigger context to the button, so the two AsChild triggers would compete for it. *@
-                <BbTooltip>
-                    <BbTooltipTrigger AsChild="true">
-                        <BbButton Variant="ButtonVariant.Outline" Size="ButtonSize.Icon" Class="bb:shrink-0"
-                                  AriaLabel="@Localizer["App.PatientList.CriteriaButton"]" OnClick="@(() => _criteriaOpen = true)">
-                            <LucideIcon Name="list-checks" Size="16" />
-                        </BbButton>
-                    </BbTooltipTrigger>
-                    <BbTooltipContent>@Localizer["App.PatientList.CriteriaButton"]</BbTooltipContent>
-                </BbTooltip>
+                @* Labelled rather than icon-only like its neighbours: the criteria are the trial's most important
+                   reference, and "list-checks" alone doesn't say so. Named like the column it explains - the sheet
+                   it opens carries the full "Eligibility criteria" title. *@
+                <BbButton Variant="ButtonVariant.Outline" Class="bb:shrink-0" OnClick="@(() => _criteriaOpen = true)">
+                    <Icon><LucideIcon Name="list-checks" Size="16" /></Icon>
+                    <ChildContent>@Localizer["App.PatientList.ColumnCriteria"]</ChildContent>
+                </BbButton>
                 <BbSheet @bind-Open="_criteriaOpen">
                     @* Focus the panel rather than the first criterion, whose SQL popover would otherwise get the focus ring.
                        Width set inline: the precompiled bb: bundle has no utility wide enough to beat the sheet's sm:max-w-sm. *@
@@ -129,10 +125,35 @@ else if (_summary is not null)
     }
     else
     {
-        <BbInput @bind-Value="_search" UpdateTiming="UpdateTiming.Debounced" DebounceInterval="300"
-                 Placeholder="@Localizer["App.PatientList.SearchPlaceholder"]" Class="bb:mb-4 bb:max-w-sm" />
+        <div class="bb:mb-4 bb:flex bb:flex-wrap bb:items-center bb:justify-between bb:gap-3">
+            @* Who needs a look comes first: "New" right after "All", then the statuses in pipeline order, each
+               with its count - only the ones someone on this list is in, so the row stays short. *@
+            <BbToggleGroup TValue="string" Type="ToggleGroupType.Single" Value="@_filter" ValueChanged="SetFilter"
+                           Required="true" Variant="ToggleVariant.Outline" Size="ToggleSize.Small" Scrollable="true"
+                           Class="bb:min-w-0" aria-label="@Localizer["App.PatientList.FilterLabel"]">
+                <BbToggleGroupItem TValue="string" Value="@FilterAll">
+                    @Localizer["App.PatientList.FilterAll"] <span class="status-filter-count">@_patients.Count</span>
+                </BbToggleGroupItem>
+                <BbToggleGroupItem TValue="string" Value="@FilterNew">
+                    @Localizer["App.PatientList.New"] <span class="status-filter-count">@_patients.Count(IsNew)</span>
+                </BbToggleGroupItem>
+                @foreach (var (status, count) in StatusCounts)
+                {
+                    <BbToggleGroupItem TValue="string" Value="@status" @key="status">
+                        @Localizer[StatusDisplay.GetKey(status)] <span class="status-filter-count">@count</span>
+                    </BbToggleGroupItem>
+                }
+            </BbToggleGroup>
+            <BbInput @bind-Value="_search" UpdateTiming="UpdateTiming.Debounced" DebounceInterval="300"
+                     Placeholder="@Localizer["App.PatientList.SearchPlaceholder"]" Class="bb:w-full bb:max-w-sm" />
+        </div>
         <BbDataTable TData="PatientListEntryDto" Data="FilteredPatients" ShowToolbar="false" ShowPagination="true"
                      PageSizes="new[] { 10, 25, 50, 100 }" InitialPageSize="25" IsLoading="false">
+            <EmptyTemplate>
+                <BbEmpty Title="@Localizer["App.PatientList.NoMatchesTitle"]" Description="@Localizer["App.PatientList.NoMatchesDescription"]">
+                    <BbButton Variant="ButtonVariant.Outline" OnClick="ShowAll">@Localizer["App.PatientList.ShowAll"]</BbButton>
+                </BbEmpty>
+            </EmptyTemplate>
             <Columns>
                 <BbDataTableColumn TData="PatientListEntryDto" TValue="DateTimeOffset?" Header="@Localizer["App.PatientList.ColumnRecommended"]" Property="p => p.RecommendedDate" Sortable="true">
                     <CellTemplate Context="p">
@@ -151,10 +172,28 @@ else if (_summary is not null)
                         </div>
                     </CellTemplate>
                 </BbDataTableColumn>
-                <BbDataTableColumn TData="PatientListEntryDto" TValue="string" Header="@Localizer["App.PatientList.ColumnName"]" Property="p => p.DisplayName" Sortable="true">
+                <BbDataTableColumn TData="PatientListEntryDto" TValue="string" Header="@Localizer["App.PatientList.ColumnName"]" Property="p => p.DisplayName" Sortable="true" MinWidth="12rem">
                     <CellTemplate Context="p">
                         <div class="bb:block bb:cursor-pointer bb:p-4 @RowMarker(p)" @onclick="() => OpenPatient(p)">
                             <span class="bb:font-medium bb:hover:underline">@p.DisplayName</span>
+                        </div>
+                    </CellTemplate>
+                </BbDataTableColumn>
+                @* Right after the name: why the patient is on the list. Sorting by it gathers the patients whose
+                   eligibility is least settled (see PatientListEntryDto.OpenCriteriaCount). Hidden for trials whose
+                   criteria aren't split into separate Libraries, which have nothing per criterion to show. *@
+                <BbDataTableColumn TData="PatientListEntryDto" TValue="int?" Header="@Localizer["App.PatientList.ColumnCriteria"]"
+                                   Property="p => p.OpenCriteriaCount" Sortable="true" Visible="_summary.Criteria.Count > 0">
+                    <CellTemplate Context="p">
+                        <div class="bb:block bb:cursor-pointer bb:p-4 @RowMarker(p)" @onclick="() => OpenPatient(p)">
+                            @if (p.CriteriaStatusesLoaded)
+                            {
+                                <CriteriaSummary Criteria="p.CriteriaStatuses" />
+                            }
+                            else
+                            {
+                                <BbSkeleton Class="bb:h-4 bb:w-16" />
+                            }
                         </div>
                     </CellTemplate>
                 </BbDataTableColumn>
@@ -205,7 +244,7 @@ else if (_summary is not null)
 
     <PatientDialog Patient="_selectedPatient" PatientChanged="p => _selectedPatient = p"
                    Acronym="@_summary.StudyAcronym" StudyTitle="@_summary.StudyTitle"
-                   TrialIdentifier="_summary.TrialIdentifier" CanEdit="_canEdit" />
+                   TrialIdentifier="_summary.TrialIdentifier" TrialCriteria="_summary.Criteria" CanEdit="_canEdit" />
 }
 
 @code {
@@ -225,6 +264,22 @@ else if (_summary is not null)
     private TrialSummaryDto? _summary;
     private List<PatientListEntryDto> _patients = [];
     private string _search = string.Empty;
+
+    private const string FilterAll = "all";
+    private const string FilterNew = "new";
+
+    /// <summary>FilterAll, FilterNew or a ResearchSubject.status.</summary>
+    private string _filter = FilterAll;
+
+    /// <summary>
+    /// Patients opened while the current filter was on - kept in view even once they no longer match
+    /// (opening a new patient marks them seen; a status change moves them to another status), so the
+    /// row doesn't vanish from under the sheet. Cleared whenever the filter changes.
+    /// </summary>
+    private readonly HashSet<PatientListEntryDto> _keptInView = [];
+
+    /// <summary>ResearchSubject.status in pipeline order, as the patient dialog offers them.</summary>
+    private static readonly string[] StatusOrder = ["candidate", "screening", "eligible", "ineligible", "on-study", "withdrawn"];
     private bool _criteriaOpen;
     private List<FunnelStepDto>? _funnelSteps;
     private bool _loading = true;
@@ -249,10 +304,45 @@ else if (_summary is not null)
     /// Replaces the data table's own toolbar search, which comes with an unwanted column-visibility
     /// button - matches what the table shows: display name, MRN, patient id and last known location.
     /// </summary>
-    private List<PatientListEntryDto> FilteredPatients => string.IsNullOrWhiteSpace(_search)
-        ? PinnedPatients
-        : [.. PinnedPatients.Where(p =>
-            Matches(p.DisplayName) || Matches(p.MedicalRecordNumber) || Matches(p.PatientId) || Matches(p.LastKnownLocation))];
+    private List<PatientListEntryDto> FilteredPatients =>
+        [.. PinnedPatients.Where(p => MatchesFilter(p) && MatchesSearch(p))];
+
+    private bool MatchesFilter(PatientListEntryDto patient) =>
+        _keptInView.Contains(patient) || _filter switch
+        {
+            FilterAll => true,
+            FilterNew => IsNew(patient),
+            _ => patient.Status == _filter,
+        };
+
+    private bool MatchesSearch(PatientListEntryDto p) =>
+        string.IsNullOrWhiteSpace(_search)
+        || Matches(p.DisplayName) || Matches(p.MedicalRecordNumber) || Matches(p.PatientId) || Matches(p.LastKnownLocation);
+
+    /// <summary>
+    /// How many patients are in each status, in pipeline order (any status outside it last). The
+    /// selected one stays even at zero, so the filter in use never disappears from the row.
+    /// </summary>
+    private IEnumerable<(string Status, int Count)> StatusCounts =>
+        _patients
+            .Select(p => p.Status)
+            .Append(_filter is FilterAll or FilterNew ? null : _filter)
+            .OfType<string>()
+            .Distinct()
+            .OrderBy(s => Array.IndexOf(StatusOrder, s) is var i and >= 0 ? i : StatusOrder.Length)
+            .Select(s => (s, _patients.Count(p => p.Status == s)));
+
+    private void SetFilter(string? filter)
+    {
+        _filter = filter ?? FilterAll;
+        _keptInView.Clear();
+    }
+
+    private void ShowAll()
+    {
+        _search = string.Empty;
+        SetFilter(FilterAll);
+    }
 
     /// <summary>
     /// The highlighted patient first, rest in their usual order (OrderBy is stable) - the data
@@ -283,10 +373,17 @@ else if (_summary is not null)
             ?.Select(s => new FunnelChartPoint(
                 s.IsTotalPopulation
                     ? Localizer["App.PatientList.FunnelTotalPopulationLabel"].Value
-                    : s.Label ?? string.Empty,
+                    : CriterionName(s.LibraryId) ?? s.Label ?? string.Empty,
                 s.Count
             ))
             .ToList();
+
+    /// <summary>
+    /// A funnel step's criterion under the name the criteria list above it uses - the funnel's own
+    /// label is a snapshot from when it was computed, which drifts once a Library is renamed.
+    /// </summary>
+    private string? CriterionName(string? libraryId) =>
+        libraryId is null ? null : _summary?.Criteria.FirstOrDefault(c => c.LibraryId == libraryId)?.DisplayText;
 
     private record FunnelChartPoint(string Stage, int Value);
 
@@ -329,6 +426,10 @@ else if (_summary is not null)
             if (_patients.Count > 0)
             {
                 _ = LoadLocationsInBackgroundAsync();
+                if (summary.Criteria.Count > 0)
+                {
+                    _ = LoadCriteriaStatusesInBackgroundAsync(summary.TrialIdentifier);
+                }
             }
         }
         catch (Exception ex)
@@ -426,9 +527,37 @@ else if (_summary is not null)
         await Task.WhenAll(tasks);
     }
 
+    /// <summary>
+    /// Every row's criteria in one search rather than one per patient - like the locations, after the
+    /// list itself so it never holds the page up. A failure leaves every row saying so ("Not
+    /// available") rather than looking like nothing was assessed.
+    /// </summary>
+    private async Task LoadCriteriaStatusesInBackgroundAsync(TrialIdentifier trialIdentifier)
+    {
+        IReadOnlyDictionary<string, IReadOnlyList<CriterionStatusDto>>? byPatient;
+        try
+        {
+            byPatient = await PatientRecordService.GetEligibilityCriteriaStatusByPatientAsync(trialIdentifier);
+        }
+        catch (Exception ex)
+        {
+            Errors.Swallowed(ex, "load the patients' eligibility criteria");
+            byPatient = null;
+        }
+
+        foreach (var patient in _patients)
+        {
+            patient.CriteriaStatuses = byPatient is null ? null : byPatient.GetValueOrDefault(patient.PatientId) ?? [];
+            patient.CriteriaStatusesLoaded = true;
+        }
+
+        await InvokeAsync(StateHasChanged);
+    }
+
     private Task OpenPatient(PatientListEntryDto patient)
     {
         _selectedPatient = patient;
+        _keptInView.Add(patient);
         return MarkSeenAsync(patient);
     }
 }

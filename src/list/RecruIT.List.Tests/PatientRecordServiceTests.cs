@@ -1,5 +1,6 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
+using RecruIT.FhirConstants;
 using RecruIT.List.Services.Fhir;
 using Task = System.Threading.Tasks.Task;
 
@@ -132,9 +133,11 @@ public sealed class PatientRecordServiceTests(FhirServerFixture fhir)
         ResearchStudy study,
         string criterion,
         string snomedCode,
-        string? note = null
-    ) =>
-        new()
+        string? note = null,
+        string? libraryId = null
+    )
+    {
+        var observation = new Observation
         {
             Id = _data.Id($"assessment-{Guid.NewGuid():N}"[..24]),
             Status = ObservationStatus.Final,
@@ -150,6 +153,73 @@ public sealed class PatientRecordServiceTests(FhirServerFixture fhir)
             Focus = [new ResourceReference($"ResearchStudy/{study.Id}")],
             Value = new CodeableConcept(Snomed, snomedCode) { Text = note },
         };
+        if (libraryId is not null)
+        {
+            observation.Extension.Add(
+                Recruit.Extensions.DerivedFromLibrary(new ResourceReference($"Library/{libraryId}"))
+            );
+        }
+
+        return observation;
+    }
+
+    /// <summary>The Library an assessment points back to - the server only accepts references to ones that exist.</summary>
+    private Library CriterionLibrary(string name) =>
+        new()
+        {
+            Id = _data.Id(name),
+            Status = PublicationStatus.Active,
+            Type = new CodeableConcept(
+                "http://terminology.hl7.org/CodeSystem/library-type",
+                "logic-library"
+            ),
+        };
+
+    [Fact]
+    public async Task A_trials_criteria_statuses_are_read_for_all_its_patients_at_once()
+    {
+        var study = _data.Study("BATCH");
+        var otherStudy = _data.Study("BATCH-OTHER");
+        var erika = _data.Patient("Erika", "Batch");
+        var max = _data.Patient("Max", "Batch");
+        var notAssessed = _data.Patient("Nobody", "Batch");
+        var adults = CriterionLibrary("lib-adults");
+        var bmi = CriterionLibrary("lib-bmi");
+        await _data.PutAsync(
+            study,
+            otherStudy,
+            erika,
+            max,
+            notAssessed,
+            adults,
+            bmi,
+            Assessment(erika, study, "Older than 18", "373066001", libraryId: adults.Id),
+            Assessment(erika, study, "BMI below 30", "82334004", "no recent BMI", bmi.Id),
+            Assessment(max, study, "Older than 18", "373067005", libraryId: adults.Id),
+            Assessment(max, otherStudy, "Some other trial's criterion", "373066001")
+        );
+
+        var byPatient = await CreateService()
+            .GetEligibilityCriteriaStatusByPatientAsync(
+                FhirTestData.TrialOf(study),
+                TestContext.Current.CancellationToken
+            );
+
+        Assert.Equal([erika.Id!, max.Id!], byPatient.Keys.Order());
+        Assert.Equal(
+            [
+                ("BMI below 30", (bool?)null, true, "no recent BMI", bmi.Id),
+                ("Older than 18", true, false, null, adults.Id),
+            ],
+            byPatient[erika.Id!]
+                .OrderBy(s => s.DisplayText)
+                .Select(s => (s.DisplayText, s.Met, s.Indeterminate, s.Note, s.LibraryId))
+        );
+        Assert.Equal(
+            [("Older than 18", (bool?)false, adults.Id)],
+            byPatient[max.Id!].Select(s => (s.DisplayText, s.Met, s.LibraryId))
+        );
+    }
 
     [Fact]
     public async Task A_failure_reading_the_location_is_reported_not_mistaken_for_no_location()

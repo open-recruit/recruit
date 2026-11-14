@@ -282,10 +282,14 @@ public sealed class ScreeningListServiceTests(FhirServerFixture fhir) : IDisposa
             summary.Criteria,
             c =>
                 Assert.Equal(
-                    ("Adults (current title)", false, "SELECT 1"),
-                    (c.DisplayText, c.Exclude, c.Sql)
+                    ("Adults (current title)", false, "SELECT 1", library.Id),
+                    (c.DisplayText, c.Exclude, c.Sql, c.LibraryId)
                 ),
-            c => Assert.Equal(("Pregnant", true, "SELECT 2"), (c.DisplayText, c.Exclude, c.Sql))
+            c =>
+                Assert.Equal(
+                    ("Pregnant", true, "SELECT 2", untitled.Id),
+                    (c.DisplayText, c.Exclude, c.Sql, c.LibraryId)
+                )
         );
     }
 

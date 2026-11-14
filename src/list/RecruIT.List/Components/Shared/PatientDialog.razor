@@ -60,6 +60,52 @@
                             </div>
                         }
 
+                        @* The evidence before the decision: why the patient is on the list, then their status. *@
+                        @if (_criteriaLoading)
+                        {
+                            <div class="bb:space-y-2">
+                                <BbSkeleton Class="bb:h-5 bb:w-full" />
+                                <BbSkeleton Class="bb:h-5 bb:w-full" />
+                            </div>
+                        }
+                        else if (_criteria.Count > 0)
+                        {
+                            <div>
+                                <div class="bb:flex bb:flex-wrap bb:items-baseline bb:justify-between criteria-heading-row">
+                                    <span class="bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground">@Localizer["App.Patient.EligibilityCriteria"]</span>
+                                    <span class="bb:text-xs bb:text-muted-foreground">@CriteriaSummaryText</span>
+                                </div>
+                                @foreach (var group in CriteriaGroups)
+                                {
+                                    @if (group.HeadingKey is not null)
+                                    {
+                                        <p class="bb:mt-3 bb:text-sm bb:font-medium">@Localizer[group.HeadingKey]</p>
+                                    }
+                                    <ul class="bb:mt-2 bb:space-y-2 bb:text-sm">
+                                        @foreach (var (criterion, name) in group.Items)
+                                        {
+                                            var state = criterion.StateOf();
+                                            <li class="bb:flex bb:items-start bb:gap-2">
+                                                <span class="criterion-row-icon">
+                                                    <CriterionStatusIcon State="state" Decorative="true" />
+                                                </span>
+                                                <div class="bb:min-w-0 bb:flex-1">
+                                                    <span>@name</span>
+                                                    @if (!string.IsNullOrEmpty(criterion.Note))
+                                                    {
+                                                        <p class="bb:text-xs bb:text-muted-foreground">@criterion.Note</p>
+                                                    }
+                                                </div>
+                                                <span class="bb:shrink-0 bb:text-xs bb:text-muted-foreground">@Localizer[CriterionStateDisplay.LabelKey(state)]</span>
+                                            </li>
+                                        }
+                                    </ul>
+                                }
+                            </div>
+
+                            <BbSeparator />
+                        }
+
                         <div>
                             <div class="bb:flex bb:items-center bb:justify-between bb:gap-3">
                                 <span class="bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground">@Localizer["App.Patient.RecruitmentStatus"]</span>
@@ -85,31 +131,6 @@
                         </div>
 
                         <BbSeparator />
-
-                        @if (_criteriaLoading)
-                        {
-                            <div class="bb:space-y-2">
-                                <BbSkeleton Class="bb:h-5 bb:w-full" />
-                                <BbSkeleton Class="bb:h-5 bb:w-full" />
-                            </div>
-                        }
-                        else if (_criteria.Count > 0)
-                        {
-                            <div>
-                                <span class="bb:text-xs bb:font-medium bb:uppercase bb:tracking-wide bb:text-muted-foreground">@Localizer["App.Patient.EligibilityCriteria"]</span>
-                                <ul class="bb:mt-2 bb:space-y-1.5 bb:text-sm">
-                                    @foreach (var criterion in _criteria)
-                                    {
-                                        <li class="bb:flex bb:items-center bb:gap-2">
-                                            <CriterionStatusIcon Met="criterion.Met" Indeterminate="criterion.Indeterminate" Note="criterion.Note" />
-                                            <span>@criterion.DisplayText</span>
-                                        </li>
-                                    }
-                                </ul>
-                            </div>
-
-                            <BbSeparator />
-                        }
 
                         @if (TrialIdentifier is not null)
                         {
@@ -144,6 +165,14 @@
     [Parameter]
     public bool CanEdit { get; set; }
 
+    /// <summary>
+    /// The trial's criteria definitions (TrialSummaryDto.Criteria), to group the patient's criteria
+    /// into inclusion and exclusion, in the trial's order and under the names the criteria list
+    /// uses. Without them (a cross-trial view) the criteria are listed ungrouped.
+    /// </summary>
+    [Parameter]
+    public IReadOnlyList<CriterionDefinitionDto> TrialCriteria { get; set; } = [];
+
     [CascadingParameter]
     private Task<AuthenticationState>? AuthStateTask { get; set; }
 
@@ -168,6 +197,82 @@
         {
             _loadedCriteriaForSubjectId = Patient.ResearchSubjectId;
             await LoadEligibilityCriteriaAsync();
+        }
+    }
+
+    private sealed record CriteriaGroup(string? HeadingKey, IReadOnlyList<(CriterionStatusDto Criterion, string Name)> Items);
+
+    /// <summary>
+    /// The patient's criteria matched to the trial's definitions - by Library, or failing that by name -
+    /// as inclusion, then exclusion, each in the trial's order; anything unmatched (e.g. a criterion
+    /// removed from the trial since it was assessed) last, alphabetically.
+    /// </summary>
+    private IReadOnlyList<CriteriaGroup> CriteriaGroups
+    {
+        get
+        {
+            var matched = _criteria
+                .Select(c => (Criterion: c, Index: IndexOfDefinition(c)))
+                .ToList();
+            if (matched.All(m => m.Index < 0))
+            {
+                return [new CriteriaGroup(null, [.. _criteria.Select(c => (c, c.DisplayText))])];
+            }
+
+            List<CriteriaGroup> groups = [];
+            foreach (var (exclude, headingKey) in new[] { (false, "App.PatientList.InclusionCriteria"), (true, "App.PatientList.ExclusionCriteria") })
+            {
+                var items = matched
+                    .Where(m => m.Index >= 0 && TrialCriteria[m.Index].Exclude == exclude)
+                    .OrderBy(m => m.Index)
+                    .Select(m => (m.Criterion, TrialCriteria[m.Index].DisplayText))
+                    .ToList();
+                if (items.Count > 0)
+                {
+                    groups.Add(new CriteriaGroup(headingKey, items));
+                }
+            }
+
+            var unmatched = matched.Where(m => m.Index < 0).Select(m => (m.Criterion, m.Criterion.DisplayText)).ToList();
+            if (unmatched.Count > 0)
+            {
+                groups.Add(new CriteriaGroup("App.Patient.OtherCriteria", unmatched));
+            }
+
+            return groups;
+        }
+    }
+
+    private int IndexOfDefinition(CriterionStatusDto criterion)
+    {
+        for (var i = 0; i < TrialCriteria.Count; i++)
+        {
+            var definition = TrialCriteria[i];
+            if (criterion.LibraryId is not null
+                ? definition.LibraryId == criterion.LibraryId
+                : string.Equals(definition.DisplayText, criterion.DisplayText, StringComparison.OrdinalIgnoreCase))
+            {
+                return i;
+            }
+        }
+
+        return -1;
+    }
+
+    /// <summary>"3 of 4 met · 1 indeterminate" - how settled the patient's eligibility is, at a glance.</summary>
+    private string CriteriaSummaryText
+    {
+        get
+        {
+            var counts = CriterionStateDisplay.CountByState(_criteria);
+            var met = counts.FirstOrDefault(c => c.State == CriterionState.Met).Count;
+            return string.Join(
+                " · ",
+                counts
+                    .Where(c => c.State != CriterionState.Met)
+                    .Select(c => Localizer[CriterionStateDisplay.CountKey(c.State), c.Count].Value)
+                    .Prepend(Localizer["App.Patient.CriteriaSummary", met, _criteria.Count].Value)
+            );
         }
     }
 
