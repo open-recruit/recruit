@@ -17,4 +17,10 @@ public sealed class CriterionStatusDto
 
     /// <summary>Optional free-text explanation from the criterion's SQL (its result_note column).</summary>
     public string? Note { get; init; }
+
+    /// <summary>
+    /// The Library the assessed criterion came from (the Observation's derived-from-library
+    /// extension) - matches CriterionDefinitionDto.LibraryId. Null for Observations without it.
+    /// </summary>
+    public string? LibraryId { get; init; }
 }

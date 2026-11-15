@@ -13,4 +13,7 @@ public sealed class FunnelStepDto
     public required int Count { get; init; }
 
     public required bool IsTotalPopulation { get; init; }
+
+    /// <summary>The criterion's Library (the population's derived-from-library extension) - matches CriterionDefinitionDto.LibraryId. Null for the total population.</summary>
+    public string? LibraryId { get; init; }
 }

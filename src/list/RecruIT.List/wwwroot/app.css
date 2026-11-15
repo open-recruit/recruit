@@ -162,6 +162,47 @@ h1:focus {
   }
 }
 
+/* The screening list's criteria cell (see CriteriaSummary.razor): icon + count per criterion state,
+   on one line, with tabular figures so counts line up down the column. */
+.criteria-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  white-space: nowrap;
+  font-size: 0.875rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.criteria-summary-count {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.criteria-summary-count + .criteria-summary-count {
+  margin-left: 0.5rem;
+}
+
+/* A status filter's patient count (see PatientList.razor), quieter than its label. */
+.status-filter-count {
+  margin-left: 0.25rem;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The patient dialog's criteria: the heading and its "3 of 4 met" summary share a row and wrap
+   apart when the sheet is narrow (gap-x/gap-y steps this small aren't in the precompiled bundle),
+   and each state icon sits on its criterion's first line rather than centred on a wrapped one. */
+.criteria-heading-row {
+  gap: 0.25rem 0.75rem;
+}
+
+.criterion-row-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  margin-top: 0.125rem;
+}
+
 /* The patient deep-linked from a notification (see PatientList.razor's ?subject=). BbDataTable
    has no per-row class, so its cells carry a marker class and the row is tinted from here. */
 tr:has(.patient-row-highlight) > td {

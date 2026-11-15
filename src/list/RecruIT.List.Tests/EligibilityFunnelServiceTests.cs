@@ -1,5 +1,6 @@
 using Hl7.Fhir.Model;
 using Microsoft.Extensions.Logging.Abstractions;
+using RecruIT.FhirConstants;
 using RecruIT.List.Services.Fhir;
 using Task = System.Threading.Tasks.Task;
 
@@ -21,14 +22,27 @@ public sealed class EligibilityFunnelServiceTests(FhirServerFixture fhir)
         string? label,
         int? count,
         string? code = null
-    ) =>
-        new()
+    )
+    {
+        var population = new MeasureReport.PopulationComponent
         {
             Code = code is null
                 ? new CodeableConcept { Text = label }
                 : new CodeableConcept(FhirVocabulary.SystemFunnelPopulationType, code),
             Count = count,
         };
+        if (label is not null)
+        {
+            // What FunnelReportBuilder links each criterion's step to.
+            population.Extension.Add(
+                Recruit.Extensions.DerivedFromLibrary(
+                    new ResourceReference($"Library/library-{label.Replace(' ', '-')}")
+                )
+            );
+        }
+
+        return population;
+    }
 
     [Fact]
     public async Task The_funnel_lists_each_step_in_order_starting_with_the_total_population()
@@ -68,8 +82,12 @@ public sealed class EligibilityFunnelServiceTests(FhirServerFixture fhir)
 
         Assert.NotNull(funnel);
         Assert.Equal(
-            [((string?)null, 1200, true), ("Older than 18", 950, false), ("Diabetic", 120, false)],
-            funnel.Select(s => (s.Label, s.Count, s.IsTotalPopulation))
+            [
+                (null, 1200, true, (string?)null),
+                ("Older than 18", 950, false, "library-Older-than-18"),
+                ("Diabetic", 120, false, "library-Diabetic"),
+            ],
+            funnel.Select(s => (s.Label, s.Count, s.IsTotalPopulation, s.LibraryId))
         );
     }
 

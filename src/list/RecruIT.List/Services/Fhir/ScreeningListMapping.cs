@@ -184,7 +184,8 @@ internal static class ScreeningListMapping
                     // can drift once a Library is renamed, or reused with a different label, after
                     // the fact. Sql is resolved from the same Library lookup, so this falls back to
                     // Code.Text only when the reference doesn't resolve to a Library we fetched.
-                    var library = (c.Value as ResourceReference).GetReferencedId() is { } libraryId
+                    var libraryId = (c.Value as ResourceReference).GetReferencedId();
+                    var library = libraryId is not null
                         ? librariesById.GetValueOrDefault(libraryId)
                         : null;
                     return new CriterionDefinitionDto
@@ -192,6 +193,7 @@ internal static class ScreeningListMapping
                         DisplayText = library?.Title ?? c.Code!.Text!,
                         Exclude = c.Exclude ?? false,
                         Sql = library?.GetSqlText(),
+                        LibraryId = libraryId,
                     };
                 }),
         ];
