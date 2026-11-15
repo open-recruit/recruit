@@ -83,7 +83,7 @@ public sealed class EligibilityFunnelServiceTests(FhirServerFixture fhir)
         Assert.NotNull(funnel);
         Assert.Equal(
             [
-                ((string?)null, 1200, true, (string?)null),
+                (null, 1200, true, (string?)null),
                 ("Older than 18", 950, false, "library-Older-than-18"),
                 ("Diabetic", 120, false, "library-Diabetic"),
             ],

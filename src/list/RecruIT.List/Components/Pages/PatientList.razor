@@ -539,7 +539,12 @@ else if (_summary is not null)
         {
             byPatient = await PatientRecordService.GetEligibilityCriteriaStatusByPatientAsync(trialIdentifier);
         }
-        catch (Exception ex)
+        catch (System.Net.Http.HttpRequestException ex)
+        {
+            Errors.Swallowed(ex, "load the patients' eligibility criteria");
+            byPatient = null;
+        }
+        catch (TaskCanceledException ex)
         {
             Errors.Swallowed(ex, "load the patients' eligibility criteria");
             byPatient = null;

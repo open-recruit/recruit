@@ -208,7 +208,7 @@ public sealed class PatientRecordServiceTests(FhirServerFixture fhir)
         Assert.Equal([erika.Id!, max.Id!], byPatient.Keys.Order());
         Assert.Equal(
             [
-                ("BMI below 30", (bool?)null, true, "no recent BMI", bmi.Id),
+                ("BMI below 30", null, true, "no recent BMI", bmi.Id),
                 ("Older than 18", true, false, null, adults.Id),
             ],
             byPatient[erika.Id!]
