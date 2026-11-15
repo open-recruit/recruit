@@ -1,5 +1,12 @@
 # Changelog
 
+## [11.2.0](https://github.com/open-recruit/recruit/compare/v11.1.0...v11.2.0) (2026-11-15)
+
+
+### Features
+
+* **ui:** show met/unmet count in list with filter buttons ([#690](https://github.com/open-recruit/recruit/issues/690)) ([34f5798](https://github.com/open-recruit/recruit/commit/34f5798b45392f2cb0816a682b8d126ee6c794ad))
+
 ## [11.1.0](https://github.com/open-recruit/recruit/compare/v11.0.2...v11.1.0) (2026-11-01)
 
 
