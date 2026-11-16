@@ -17,8 +17,7 @@ builder.Services.AddRazorComponents().AddInteractiveServerComponents();
 builder.Services.AddAppLocalization();
 builder.Services.AddAppOptions(builder.Configuration);
 
-var fhirBaseUrl =
-    builder.Configuration.GetValue<string>("FhirServer:BaseUrl")
+var fhirBaseUrl = builder.Configuration.GetValue<string>("FhirServer:BaseUrl")
     ?? throw new InvalidOperationException("FhirServer:BaseUrl must be configured.");
 var authEnabled = builder.Configuration.GetValue<bool>("Auth:Enabled");
 

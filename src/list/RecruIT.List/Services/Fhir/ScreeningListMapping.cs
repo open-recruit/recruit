@@ -155,8 +155,8 @@ internal static class ScreeningListMapping
             Gender = EnumUtility.GetLiteral(patient?.Gender),
             Phone = TelecomValue(patient, ContactPoint.ContactPointSystem.Phone),
             Email = TelecomValue(patient, ContactPoint.ContactPointSystem.Email),
-            Status =
-                EnumUtility.GetLiteral(subject.Status) ?? FhirVocabulary.SubjectStatusCandidate,
+            Status = EnumUtility.GetLiteral(subject.Status)
+                ?? FhirVocabulary.SubjectStatusCandidate,
             RecommendedDate = FhirBundleHelpers.ParseFhirInstant(entry.Date),
             SystemDeterminedIneligible = IsFlaggedIneligible(entry),
             LastUpdated = subject.Meta?.LastUpdated,

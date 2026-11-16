@@ -54,11 +54,10 @@ public sealed class ResearchSubjectService(
         ResearchSubject current;
         try
         {
-            current =
-                await client.ReadAsync<ResearchSubject>(
-                    $"ResearchSubject/{researchSubjectId}",
-                    ct: ct
-                ) ?? throw new FhirAccessException(localizer["App.Errors.PatientRecordNotFound"]);
+            current = await client.ReadAsync<ResearchSubject>(
+                $"ResearchSubject/{researchSubjectId}",
+                ct: ct
+            ) ?? throw new FhirAccessException(localizer["App.Errors.PatientRecordNotFound"]);
         }
         catch (FhirAccessException)
         {
@@ -186,15 +185,10 @@ public sealed class ResearchSubjectService(
         var entries = new List<PatientHistoryEntryDto>();
 
         entries.AddRange(
-            historyTask.Result.Select(h => new PatientHistoryEntryDto
-            {
-                Time = h.LastUpdated,
-                Title = localizer[
-                    "App.Timeline.StatusChanged",
-                    localizer[StatusDisplay.GetKey(h.Status)]
-                ],
-                Kind = PatientHistoryEntryKind.StatusChange,
-            })
+            historyTask.Result.Select(h => new PatientHistoryEntryDto.StatusChange(
+                h.LastUpdated,
+                localizer["App.Timeline.StatusChanged", localizer[StatusDisplay.GetKey(h.Status)]]
+            ))
         );
 
         // Each version of a note is its own entry: the first as "added", every later one as
@@ -208,10 +202,9 @@ public sealed class ResearchSubjectService(
                         )
                         .Select(
                             (version, i) =>
-                                new PatientHistoryEntryDto
-                                {
-                                    Time = i == 0 ? n.Time!.Value : version.WrittenAt,
-                                    Title = (i == 0, string.IsNullOrEmpty(n.Author)) switch
+                                new PatientHistoryEntryDto.Note(
+                                    i == 0 ? n.Time!.Value : version.WrittenAt,
+                                    (i == 0, string.IsNullOrEmpty(n.Author)) switch
                                     {
                                         (true, true) => localizer["App.Timeline.NoteAdded"],
                                         (true, false) => localizer[
@@ -224,9 +217,8 @@ public sealed class ResearchSubjectService(
                                             n.Author!
                                         ],
                                     },
-                                    Description = version.Text,
-                                    Kind = PatientHistoryEntryKind.Note,
-                                }
+                                    version.Text
+                                )
                         )
                 )
         );

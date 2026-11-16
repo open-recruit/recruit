@@ -90,35 +90,30 @@ internal static class AuthenticationExtensions
     public static IEndpointRouteBuilder MapAuthenticationEndpoints(this IEndpointRouteBuilder app)
     {
         var authGroup = app.MapGroup("/authentication");
-        authGroup.MapGet(
-            "/login",
-            (string? returnUrl) =>
-                Results.Challenge(
-                    new AuthenticationProperties
-                    {
-                        RedirectUri = IsLocalUrl(returnUrl) ? returnUrl : "/",
-                    },
-                    [OpenIdConnectDefaults.AuthenticationScheme]
-                )
+        authGroup.MapGet("/login", (string? returnUrl) =>
+            Results.Challenge(
+                new AuthenticationProperties
+                {
+                    RedirectUri = IsLocalUrl(returnUrl) ? returnUrl : "/",
+                },
+                [OpenIdConnectDefaults.AuthenticationScheme]
+            )
         );
 
         // GET is needed because Blazor Server's NavigationManager.NavigateTo(forceLoad: true) - the
         // only way to trigger a real HTTP request (and thus an auth-cookie-clearing response) from an
         // interactive circuit - always issues a GET.
-        authGroup.MapMethods(
-            "/logout",
-            ["GET", "POST"],
-            (string? returnUrl) =>
-                Results.SignOut(
-                    new AuthenticationProperties
-                    {
-                        RedirectUri = IsLocalUrl(returnUrl) ? returnUrl : "/logged-out",
-                    },
-                    [
-                        CookieAuthenticationDefaults.AuthenticationScheme,
-                        OpenIdConnectDefaults.AuthenticationScheme,
-                    ]
-                )
+        authGroup.MapMethods("/logout", ["GET", "POST"], (string? returnUrl) =>
+            Results.SignOut(
+                new AuthenticationProperties
+                {
+                    RedirectUri = IsLocalUrl(returnUrl) ? returnUrl : "/logged-out",
+                },
+                [
+                    CookieAuthenticationDefaults.AuthenticationScheme,
+                    OpenIdConnectDefaults.AuthenticationScheme,
+                ]
+            )
         );
         return app;
     }

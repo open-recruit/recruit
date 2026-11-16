@@ -30,5 +30,8 @@ public sealed class MetricsTests(AppFixture app)
         Assert.Contains("recruit_notifications_email_pending", body);
         // A histogram, since writing their bucket bounds is what broke with a mismatched exporter.
         Assert.Contains("http_server_request_duration_seconds_bucket", body);
+        // The runtime's own System.Runtime meter, which the dashboard's CPU and memory panels use.
+        Assert.Contains("dotnet_process_cpu_time_seconds_total", body);
+        Assert.Contains("dotnet_process_memory_working_set_bytes", body);
     }
 }

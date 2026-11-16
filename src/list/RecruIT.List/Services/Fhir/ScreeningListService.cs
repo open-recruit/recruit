@@ -75,8 +75,8 @@ public sealed class ScreeningListService(
                     TrialIdentifier = trialInfo.Identifier,
                     StudyAcronym = trialInfo.Acronym!,
                     StudyTitle = trialInfo.Title,
-                    ListStatus =
-                        EnumUtility.GetLiteral(list.Status) ?? FhirVocabulary.ListStatusCurrent,
+                    ListStatus = EnumUtility.GetLiteral(list.Status)
+                        ?? FhirVocabulary.ListStatusCurrent,
                     RecruitedCount = recruited,
                     PendingCount = pending,
                     NotRecruitedCount = notRecruited,
@@ -218,8 +218,7 @@ public sealed class ScreeningListService(
             throw new FhirAccessException(localizer["App.Errors.PatientListLoadFailed"], ex);
         }
 
-        var list =
-            resources.OfType<FhirList>().FirstOrDefault()
+        var list = resources.OfType<FhirList>().FirstOrDefault()
             ?? throw new FhirAccessException(localizer["App.Errors.ListNotFound"]);
 
         // The acronym, trial identifier (see TrialIdentifier) and title/description all live on

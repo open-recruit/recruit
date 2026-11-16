@@ -80,9 +80,8 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         var ct = TestContext.Current.CancellationToken;
         await service.SubmitAsync(NewStudyDraft(), [criterion], Admin, ct);
 
-        var library = Assert.Single(
-            await service.SearchLibrariesAsync(Admin, ct),
-            l => l.Title == criterion.DisplayText
+        var library = Assert.Single(await service.SearchLibrariesAsync(Admin, ct), l =>
+            l.Title == criterion.DisplayText
         );
 
         Assert.Equal("SELECT patient_id FROM adults", library.Sql);
@@ -127,9 +126,8 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         var service = CreateService();
         var ct = TestContext.Current.CancellationToken;
 
-        var summary = Assert.Single(
-            await service.GetResearchStudiesAsync(Admin, ct),
-            s => s.Id == existing.Id
+        var summary = Assert.Single(await service.GetResearchStudiesAsync(Admin, ct), s =>
+            s.Id == existing.Id
         );
         Assert.Equal(("EXISTING", existing.Title), (summary.Acronym, summary.Title));
         var criterion = NewCriterion("Adults", "SELECT 1");
@@ -165,9 +163,8 @@ public sealed class EligibilityCriteriaServiceTests(FhirServerFixture fhir)
         await _data.PutAsync(added);
 
         Assert.Same(first, await service.GetResearchStudiesAsync(Admin, ct));
-        Assert.Contains(
-            await CreateService().GetResearchStudiesAsync(Admin, ct),
-            s => s.Id == added.Id
+        Assert.Contains(await CreateService().GetResearchStudiesAsync(Admin, ct), s =>
+            s.Id == added.Id
         );
     }
 

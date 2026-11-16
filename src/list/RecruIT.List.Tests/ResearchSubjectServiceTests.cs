@@ -171,13 +171,19 @@ public sealed class ResearchSubjectServiceTests(FhirServerFixture fhir) : IDispo
 
         Assert.Equal(
             [
-                (PatientHistoryEntryKind.StatusChange, (string?)null),
-                (PatientHistoryEntryKind.Note, "<p>Called the patient twice</p>"),
-                (PatientHistoryEntryKind.Note, "<p>Called the patient</p>"),
-                (PatientHistoryEntryKind.StatusChange, null),
-                (PatientHistoryEntryKind.StatusChange, null),
+                "status",
+                "note: <p>Called the patient twice</p>",
+                "note: <p>Called the patient</p>",
+                "status",
+                "status",
             ],
-            timeline.Select(e => (e.Kind, e.Description))
+            timeline.Select(e =>
+                e switch
+                {
+                    PatientHistoryEntryDto.StatusChange => "status",
+                    PatientHistoryEntryDto.Note note => $"note: {note.Html}",
+                }
+            )
         );
         Assert.Equal(timeline.OrderByDescending(e => e.Time), timeline);
         Assert.Equal(
@@ -198,7 +204,7 @@ public sealed class ResearchSubjectServiceTests(FhirServerFixture fhir) : IDispo
             TestContext.Current.CancellationToken
         );
 
-        Assert.Equal(PatientHistoryEntryKind.StatusChange, Assert.Single(timeline).Kind);
+        Assert.IsType<PatientHistoryEntryDto.StatusChange>(Assert.Single(timeline));
     }
 
     /// <summary>

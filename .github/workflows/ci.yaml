@@ -235,7 +235,7 @@ jobs:
       # the E2E fixture downloads Chromium itself, but not the system libraries it needs.
       - name: Install Playwright's browser dependencies
         working-directory: src/list
-        run: pwsh RecruIT.List.E2ETests/bin/Debug/net10.0/playwright.ps1 install --with-deps chromium
+        run: pwsh RecruIT.List.E2ETests/bin/Debug/net11.0/playwright.ps1 install --with-deps chromium
 
       - name: Run unit tests
         working-directory: src/list

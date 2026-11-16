@@ -70,8 +70,7 @@ public sealed class NotificationDetectorService(
     public async Task PollListAsync(string listId, CancellationToken ct = default)
     {
         var client = clientFactory.CreateClient();
-        var list =
-            await client.ReadAsync<FhirList>($"List/{listId}", ct: ct)
+        var list = await client.ReadAsync<FhirList>($"List/{listId}", ct: ct)
             ?? throw new InvalidOperationException($"List/{listId} not found.");
         await PollListAsync(client, list, ct);
     }

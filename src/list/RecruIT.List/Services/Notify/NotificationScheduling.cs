@@ -30,52 +30,61 @@ public static class NotificationScheduling
         TimeOnly? timeOfDay,
         string timeZoneId,
         DateTimeOffset occurredAt
+    ) =>
+        ComputeEmailScheduledFor(
+            DigestSchedule.From(frequency, dayOfWeek, timeOfDay),
+            timeZoneId,
+            occurredAt
+        );
+
+    /// <inheritdoc cref="ComputeEmailScheduledFor(NotificationFrequency, DayOfWeek?, TimeOnly?, string, DateTimeOffset)"/>
+    public static DateTimeOffset ComputeEmailScheduledFor(
+        DigestSchedule schedule,
+        string timeZoneId,
+        DateTimeOffset occurredAt
+    ) =>
+        schedule switch
+        {
+            DigestSchedule.Instant => occurredAt,
+            DigestSchedule.Daily(var timeOfDay) => FirstSlotAfter(
+                occurredAt,
+                timeZoneId,
+                searchFrom => searchFrom + timeOfDay.ToTimeSpan(),
+                slot => slot.AddDays(1)
+            ),
+            DigestSchedule.Weekly(var dayOfWeek, var timeOfDay) => FirstSlotAfter(
+                occurredAt,
+                timeZoneId,
+                searchFrom => FirstOnOrAfter(searchFrom, dayOfWeek) + timeOfDay.ToTimeSpan(),
+                slot => slot.AddDays(7)
+            ),
+            DigestSchedule.Monthly => FirstSlotAfter(
+                occurredAt,
+                timeZoneId,
+                searchFrom =>
+                    new DateTime(searchFrom.Year, searchFrom.Month, 1)
+                    + MonthlyDigestTime.ToTimeSpan(),
+                slot => slot.AddMonths(1)
+            ),
+        };
+
+    /// <summary>
+    /// Walks a digest's local wall-clock slots - the first one on or after searchFrom, then each
+    /// next one - until one falls strictly after occurredAt.
+    /// </summary>
+    private static DateTimeOffset FirstSlotAfter(
+        DateTimeOffset occurredAt,
+        string timeZoneId,
+        Func<DateTime, DateTime> firstSlotFrom,
+        Func<DateTime, DateTime> nextSlot
     )
     {
-        if (frequency == NotificationFrequency.Instant)
-        {
-            return occurredAt;
-        }
-
         var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
 
         // Start from the day before the event's local date: a slot's later pass through a "fall
         // back" overlap can still be ahead of an event whose local time already reads the next day.
         var searchFrom = TimeZoneInfo.ConvertTime(occurredAt, timeZone).Date.AddDays(-1);
-
-        var slotLocal = frequency switch
-        {
-            NotificationFrequency.Daily => searchFrom
-                + (
-                    timeOfDay
-                    ?? throw new ArgumentException(
-                        "timeOfDay is required for Daily frequency.",
-                        nameof(timeOfDay)
-                    )
-                ).ToTimeSpan(),
-            NotificationFrequency.Weekly => FirstOnOrAfter(
-                searchFrom,
-                dayOfWeek
-                    ?? throw new ArgumentException(
-                        "dayOfWeek is required for Weekly frequency.",
-                        nameof(dayOfWeek)
-                    )
-            )
-                + (
-                    timeOfDay
-                    ?? throw new ArgumentException(
-                        "timeOfDay is required for Weekly frequency.",
-                        nameof(timeOfDay)
-                    )
-                ).ToTimeSpan(),
-            NotificationFrequency.Monthly => new DateTime(searchFrom.Year, searchFrom.Month, 1)
-                + MonthlyDigestTime.ToTimeSpan(),
-            _ => throw new ArgumentOutOfRangeException(
-                nameof(frequency),
-                frequency,
-                "Unhandled notification frequency."
-            ),
-        };
+        var slotLocal = firstSlotFrom(searchFrom);
 
         // Compare instants rather than wall-clock times: during a "fall back" overlap, a slot whose
         // wall-clock time has already passed once is still ahead, on its later pass.
@@ -86,12 +95,7 @@ public static class NotificationScheduling
             {
                 return slot;
             }
-            slotLocal = frequency switch
-            {
-                NotificationFrequency.Weekly => slotLocal.AddDays(7),
-                NotificationFrequency.Monthly => slotLocal.AddMonths(1),
-                _ => slotLocal.AddDays(1),
-            };
+            slotLocal = nextSlot(slotLocal);
         }
     }
 

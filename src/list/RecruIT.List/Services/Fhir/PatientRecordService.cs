@@ -128,9 +128,9 @@ public sealed class PatientRecordService(
                     as Bundle;
 
                 return bundle
-                        ?.Entry.Where(e => e.Resource is not null)
-                        .Select(e => e.Resource!)
-                        .ToList()
+                    ?.Entry.Where(e => e.Resource is not null)
+                    .Select(e => e.Resource!)
+                    .ToList()
                     ?? [];
             }
             catch (FhirOperationException ex) when (ex.Status == HttpStatusCode.BadRequest)

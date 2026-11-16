@@ -21,21 +21,34 @@ internal static class ObservabilityExtensions
             .Services.AddHealthChecks()
             .AddNpgSql(appDbConnectionString, name: "postgres", tags: ["ready"]);
 
+        // ASP.NET Core, HttpClient and the runtime publish their metrics (and, since .NET 11, ASP.NET
+        // Core its semantic-convention request spans too) natively, so subscribing to their meters and
+        // activity sources by name replaces the OpenTelemetry.Instrumentation.* packages - which on
+        // .NET 9+ did nothing more than that for these.
         var otelBuilder = builder
             .Services.AddOpenTelemetry()
             .WithMetrics(metrics =>
                 metrics
-                    .AddAspNetCoreInstrumentation()
-                    // Blazor Server's own meters (circuits, navigation, event handling, rendering) - not
-                    // part of AddAspNetCoreInstrumentation, which only covers HTTP-level ones.
+                    .AddMeter(
+                        "Microsoft.AspNetCore.Hosting",
+                        "Microsoft.AspNetCore.Server.Kestrel",
+                        "Microsoft.AspNetCore.Http.Connections",
+                        "Microsoft.AspNetCore.Routing",
+                        "Microsoft.AspNetCore.Diagnostics",
+                        "Microsoft.AspNetCore.RateLimiting",
+                        "Microsoft.AspNetCore.Authentication",
+                        "Microsoft.AspNetCore.Authorization",
+                        "Microsoft.AspNetCore.MemoryPool"
+                    )
+                    // Blazor Server's own meters (circuits, navigation, event handling, rendering).
                     .AddMeter(
                         "Microsoft.AspNetCore.Components",
                         "Microsoft.AspNetCore.Components.Lifecycle",
                         "Microsoft.AspNetCore.Components.Server.Circuits"
                     )
-                    .AddHttpClientInstrumentation()
+                    .AddMeter("System.Net.Http", "System.Net.NameResolution")
+                    .AddMeter("System.Runtime")
                     .AddNpgsqlInstrumentation()
-                    .AddRuntimeInstrumentation()
                     .AddMeter(RecruitMetrics.MeterName)
                     .AddPrometheusExporter()
             );
@@ -50,14 +63,15 @@ internal static class ObservabilityExtensions
         // OTEL_EXPORTER_OTLP_ENDPOINT/_PROTOCOL/OTEL_SERVICE_NAME env vars (or appsettings keys of the
         // same name) itself - the same convention the other OTEL_*-instrumented services in
         // src/hack/compose.yaml already use, so no separate endpoint setting is needed here.
-        // AddHttpClientInstrumentation covers every HttpClient in the app by DiagnosticSource, including
-        // the named "fhir" client (Services/Fhir/FhirClientFactory) - there's no separate per-client setup.
+        // "System.Net.Http" covers every HttpClient in the app, including the named "fhir" client
+        // (Services/Fhir/FhirClientFactory) - there's no separate per-client setup.
+        // "Microsoft.AspNetCore.Components" adds Blazor's circuit, navigation and event-handling spans.
         if (tracingEnabled)
         {
             otelBuilder.WithTracing(tracing =>
                 tracing
-                    .AddAspNetCoreInstrumentation()
-                    .AddHttpClientInstrumentation()
+                    .AddSource("Microsoft.AspNetCore", "Microsoft.AspNetCore.Components")
+                    .AddSource("System.Net.Http")
                     .AddNpgsql()
                     .AddOtlpExporter()
             );

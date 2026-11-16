@@ -508,8 +508,7 @@ public sealed class NotificationSenderService(
     {
         var resourceName =
             $"{typeof(NotificationSenderService).Namespace}.Templates.NotificationDigest.mjml.liquid";
-        using var stream =
-            Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)
+        using var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream(resourceName)
             ?? throw new InvalidOperationException(
                 $"Embedded MJML template '{resourceName}' was not found."
             );

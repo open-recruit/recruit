@@ -9,6 +9,9 @@ podAnnotations:
   linkerd.io/inject: "enabled"
 
 list:
+  service:
+    annotations:
+      traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
   podDisruptionBudget:
     enabled: true
   notifications:

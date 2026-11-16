@@ -283,9 +283,8 @@ public sealed class NotificationSenderServiceTests(FhirServerFixture fhir, Postg
 
         Assert.True(await IsSentAsync(good));
         Assert.False(await IsSentAsync(bad));
-        Assert.Contains(
-            _log.Entries,
-            e => e.Level == LogLevel.Error && e.Exception is InvalidOperationException
+        Assert.Contains(_log.Entries, e =>
+            e.Level == LogLevel.Error && e.Exception is InvalidOperationException
         );
     }
 

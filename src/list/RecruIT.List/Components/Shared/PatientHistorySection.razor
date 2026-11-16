@@ -23,7 +23,7 @@
                 @for (var i = 0; i < _entries.Count; i++)
                 {
                     var entry = _entries[i];
-                    var color = entry.Kind == PatientHistoryEntryKind.Note ? TimelineColor.Secondary : TimelineColor.Primary;
+                    var (color, icon) = Appearance(entry);
                     @* Alternate keeps even items' content on the right, so their date column is on
                        the left. TimeContent gets no alignment from the library, so push each date
                        toward the line itself, or the left-hand ones sit at the far edge. *@
@@ -33,7 +33,7 @@
                             @* IconContent replaces the whole icon, circle included - BbTimelineIcon
                                puts the circle (and IconColor's color) back. *@
                             <BbTimelineIcon Color="color" Size="TimelineSize.Small">
-                                <LucideIcon Name="@(entry.Kind == PatientHistoryEntryKind.Note ? "message-square" : "activity")" Size="14" />
+                                <LucideIcon Name="@icon" Size="14" />
                             </BbTimelineIcon>
                         </IconContent>
                         <TimeContent>
@@ -44,18 +44,9 @@
                                 <BbTimelineHeader>
                                     <BbTimelineTitle>@entry.Title</BbTimelineTitle>
                                 </BbTimelineHeader>
-                                @if (!string.IsNullOrEmpty(entry.Description))
+                                @if (entry is PatientHistoryEntryDto.Note { Html.Length: > 0 } note)
                                 {
-                                    <BbTimelineDescription>
-                                        @if (entry.Kind == PatientHistoryEntryKind.Note)
-                                        {
-                                            @RenderNote(entry.Description)
-                                        }
-                                        else
-                                        {
-                                            @entry.Description
-                                        }
-                                    </BbTimelineDescription>
+                                    <BbTimelineDescription>@RenderNote(note.Html)</BbTimelineDescription>
                                 }
                             </BbTimelineContent>
                         </ChildContent>
@@ -76,6 +67,13 @@
     private DateTimeOffset? _loadedForLastUpdated;
 
     private static MarkupString RenderNote(string html) => new(NoteHtmlSanitizer.Sanitize(html));
+
+    private static (TimelineColor Color, string Icon) Appearance(PatientHistoryEntryDto entry) =>
+        entry switch
+        {
+            PatientHistoryEntryDto.StatusChange => (TimelineColor.Primary, "activity"),
+            PatientHistoryEntryDto.Note => (TimelineColor.Secondary, "message-square"),
+        };
 
     protected override async Task OnParametersSetAsync()
     {

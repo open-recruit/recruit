@@ -36,14 +36,11 @@ internal static class ServiceExtensions
         // is false. This app used to forward the signed-in user's OIDC access token (AddUserAccessTokenHttpClient),
         // but per-user FHIR authorization isn't needed right now; a static/service-account credential
         // (the app calling FHIR as itself, not as any particular user) should replace this later.
-        services.AddHttpClient(
-            FhirClientFactory.HttpClientName,
-            client =>
-            {
-                client.BaseAddress = new Uri(fhirBaseUrl);
-                client.DefaultRequestHeaders.Add("Prefer", "handling=strict");
-            }
-        );
+        services.AddHttpClient(FhirClientFactory.HttpClientName, client =>
+        {
+            client.BaseAddress = new Uri(fhirBaseUrl);
+            client.DefaultRequestHeaders.Add("Prefer", "handling=strict");
+        });
 
         services.AddScoped<TrialAccessService>();
         services.AddSingleton<FhirClientFactory>();
