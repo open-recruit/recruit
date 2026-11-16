@@ -276,10 +276,20 @@ sidecar, import `charts/recruit/files/dashboards/recruit.json` from the reposito
 ## High availability
 
 The screening list and the FHIR server support running multiple replicas, so they stay available if a single pod or
-node fails. The screening list keeps all of its state, including its notification job queue, in PostgreSQL, so its
-replicas don't need any further setup. The query module should only run as a single replica.
+node fails. The query module should only run as a single replica.
 
-The following values run two replicas of both, create
+The screening list keeps its data, including its notification job queue and the keys that protect its sign-in cookies,
+in PostgreSQL. It is a Blazor Server app, though: each open browser tab is connected to one pod, which holds that tab's
+session in memory. With more than one replica, the ingress controller has to send all of a browser's requests to the
+same pod, using a sticky-session cookie. Without it, the browser shows errors like
+`WebSocket failed to connect. The connection could not be found on the server` and
+`No Connection with that ID: Status code '404'`, and the page stops responding.
+
+With Traefik, sticky sessions are set with annotations on the list's Service (`list.service.annotations`), as in the
+values below. With ingress-nginx, set `nginx.ingress.kubernetes.io/affinity: "cookie"` in `list.ingress.annotations`
+instead. If a pod goes away, the tabs connected to it lose their session and have to be reloaded.
+
+The following values run two replicas of both, pin each browser session to one screening list pod, create
 [PodDisruptionBudgets](https://kubernetes.io/docs/tasks/run-application/configure-pdb/) for them, and use
 [pod topology spread constraints](https://kubernetes.io/docs/concepts/scheduling-eviction/topology-spread-constraints/)
 to spread their pods across the cluster's topology zones:

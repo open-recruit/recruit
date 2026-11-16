@@ -247,6 +247,10 @@ list:
     port: 8080
     # -- service port for the Prometheus metrics endpoint
     metricsPort: 8081
+    # -- additional annotations for the Service, e.g. an ingress controller's sticky-session settings. The list
+    # module is a Blazor Server app: with more than one replica, every request of a browser session has to reach
+    # the same pod, see the docs' High availability section.
+    annotations: {}
 
   database:
     # -- Npgsql connection string for list's own data (trial access grants, notification poll

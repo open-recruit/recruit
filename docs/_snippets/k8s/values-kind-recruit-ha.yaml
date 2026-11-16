@@ -1,5 +1,14 @@
 list:
   replicaCount: 2
+  # Blazor Server keeps each browser session's state in the pod that serves it, so Traefik pins every
+  # session to one pod with a cookie
+  service:
+    annotations:
+      traefik.ingress.kubernetes.io/service.sticky.cookie: "true"
+      traefik.ingress.kubernetes.io/service.sticky.cookie.name: recruit-list-affinity
+      traefik.ingress.kubernetes.io/service.sticky.cookie.secure: "true"
+      traefik.ingress.kubernetes.io/service.sticky.cookie.httponly: "true"
+      traefik.ingress.kubernetes.io/service.sticky.cookie.samesite: lax
   podDisruptionBudget:
     enabled: true
   topologySpreadConstraints:
