@@ -1,5 +1,12 @@
 # Changelog
 
+## [11.2.1](https://github.com/open-recruit/recruit/compare/v11.2.0...v11.2.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* allow sticky service session config and .net 11 upgrade ([#692](https://github.com/open-recruit/recruit/issues/692)) ([dde6f05](https://github.com/open-recruit/recruit/commit/dde6f0546462ac0cd5bfd5b1461a36745780ee0d))
+
 ## [11.2.0](https://github.com/open-recruit/recruit/compare/v11.1.0...v11.2.0) (2026-11-15)
 
 
