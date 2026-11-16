@@ -69,13 +69,11 @@ public sealed class NotificationSchedulingProperties
         }
 
         // Otherwise the slot fell into a "spring forward" gap, and moves to the end of that gap.
-        Assert.Contains(
-            changes,
-            change =>
-                change.At == scheduledFor
-                && new[] { local.Date, local.Date.AddDays(-1) }
-                    .Select(date => date + slotTime.ToTimeSpan())
-                    .Any(slot => digest.IsSlotDay(slot) && change.Skips(slot))
+        Assert.Contains(changes, change =>
+            change.At == scheduledFor
+            && new[] { local.Date, local.Date.AddDays(-1) }
+                .Select(date => date + slotTime.ToTimeSpan())
+                .Any(slot => digest.IsSlotDay(slot) && change.Skips(slot))
         );
     }
 
@@ -117,44 +115,41 @@ public sealed class NotificationSchedulingProperties
 
     /// <summary>Every instant in the year the zone's UTC offset changes, to the minute.</summary>
     private static OffsetChange[] OffsetChanges(string timeZoneId, int year) =>
-        OffsetChangeCache.GetOrAdd(
-            (timeZoneId, year),
-            _ =>
+        OffsetChangeCache.GetOrAdd((timeZoneId, year), _ =>
+        {
+            var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
+            var changes = new List<OffsetChange>();
+            for (
+                var day = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
+                day.Year == year;
+                day = day.AddDays(1)
+            )
             {
-                var timeZone = TimeZoneInfo.FindSystemTimeZoneById(timeZoneId);
-                var changes = new List<OffsetChange>();
-                for (
-                    var day = new DateTimeOffset(year, 1, 1, 0, 0, 0, TimeSpan.Zero);
-                    day.Year == year;
-                    day = day.AddDays(1)
-                )
+                var before = timeZone.GetUtcOffset(day);
+                if (timeZone.GetUtcOffset(day.AddDays(1)) == before)
                 {
-                    var before = timeZone.GetUtcOffset(day);
-                    if (timeZone.GetUtcOffset(day.AddDays(1)) == before)
-                    {
-                        continue;
-                    }
-
-                    // Binary search for the first minute of the day with the new offset.
-                    var (unchanged, changed) = (0, 24 * 60);
-                    while (changed - unchanged > 1)
-                    {
-                        var mid = (unchanged + changed) / 2;
-                        if (timeZone.GetUtcOffset(day.AddMinutes(mid)) == before)
-                        {
-                            unchanged = mid;
-                        }
-                        else
-                        {
-                            changed = mid;
-                        }
-                    }
-                    var at = day.AddMinutes(changed);
-                    changes.Add(new OffsetChange(at, before, timeZone.GetUtcOffset(at)));
+                    continue;
                 }
-                return [.. changes];
+
+                // Binary search for the first minute of the day with the new offset.
+                var (unchanged, changed) = (0, 24 * 60);
+                while (changed - unchanged > 1)
+                {
+                    var mid = (unchanged + changed) / 2;
+                    if (timeZone.GetUtcOffset(day.AddMinutes(mid)) == before)
+                    {
+                        unchanged = mid;
+                    }
+                    else
+                    {
+                        changed = mid;
+                    }
+                }
+                var at = day.AddMinutes(changed);
+                changes.Add(new OffsetChange(at, before, timeZone.GetUtcOffset(at)));
             }
-        );
+            return [.. changes];
+        });
 
     private sealed record OffsetChange(DateTimeOffset At, TimeSpan Before, TimeSpan After)
     {

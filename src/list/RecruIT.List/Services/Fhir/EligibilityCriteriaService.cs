@@ -254,8 +254,7 @@ public sealed class EligibilityCriteriaService(
                 criteria.Add(
                     new CriterionDraft
                     {
-                        DisplayText =
-                            characteristic.Code?.Text
+                        DisplayText = characteristic.Code?.Text
                             ?? library?.Title
                             ?? library?.Name
                             ?? libraryId,

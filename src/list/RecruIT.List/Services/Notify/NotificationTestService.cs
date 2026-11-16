@@ -78,8 +78,7 @@ public sealed class NotificationTestService(
 
         var client = clientFactory.CreateClient();
         var list = await ReadListAsync(client, listId, ct);
-        var entry =
-            list.Entry.FirstOrDefault(e => e.Item.GetReferencedId() == researchSubjectId)
+        var entry = list.Entry.FirstOrDefault(e => e.Item.GetReferencedId() == researchSubjectId)
             ?? throw new UserFacingException(
                 localizer["App.NotificationTest.ReRecommendNotOnList"]
             );

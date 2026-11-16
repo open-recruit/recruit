@@ -9,6 +9,9 @@
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
     <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
     <RestoreLockedMode>true</RestoreLockedMode>
+    <!-- Runtime-managed async instead of compiler-generated state machines: real call chains in live
+         stack traces (debugger, profilers) and less per-await overhead. -->
+    <Features>$(Features);runtime-async=on</Features>
     <!-- x-release-please-start-version -->
     <Version>11.2.0</Version>
     <!-- x-release-please-end -->

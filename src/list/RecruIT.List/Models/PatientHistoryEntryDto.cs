@@ -1,19 +1,16 @@
 namespace RecruIT.List.Models;
 
-public enum PatientHistoryEntryKind
+/// <summary>
+/// One entry in a patient's combined status-change + note timeline, newest first. Closed, so a
+/// switch over the kinds of entry is exhaustive - and only a Note carries text, which is
+/// (sanitized) HTML that gets rendered as markup.
+/// </summary>
+public closed record PatientHistoryEntryDto(DateTimeOffset Time, string Title)
 {
-    StatusChange,
-    Note,
-}
+    public sealed record StatusChange(DateTimeOffset Time, string Title)
+        : PatientHistoryEntryDto(Time, Title);
 
-/// <summary>One entry in a patient's combined status-change + note timeline, newest first.</summary>
-public sealed class PatientHistoryEntryDto
-{
-    public required DateTimeOffset Time { get; init; }
-
-    public required string Title { get; init; }
-
-    public string? Description { get; init; }
-
-    public required PatientHistoryEntryKind Kind { get; init; }
+    /// <summary>One version of a screening note, Html being its text as it read at that point.</summary>
+    public sealed record Note(DateTimeOffset Time, string Title, string Html)
+        : PatientHistoryEntryDto(Time, Title);
 }

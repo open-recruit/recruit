@@ -47,14 +47,11 @@ public sealed class EmailNotificationChannelTests(MailDevFixture mailDev)
             ["alice@example.org", "bob@example.org"],
             received.Select(m => Assert.Single(m.To).Address).Order()
         );
-        Assert.All(
-            received,
-            m =>
-            {
-                Assert.Equal("recruit@example.org", Assert.Single(m.From).Address);
-                Assert.Contains("<p>Two new patients</p>", m.Html);
-            }
-        );
+        Assert.All(received, m =>
+        {
+            Assert.Equal("recruit@example.org", Assert.Single(m.From).Address);
+            Assert.Contains("<p>Two new patients</p>", m.Html);
+        });
     }
 
     [Fact]

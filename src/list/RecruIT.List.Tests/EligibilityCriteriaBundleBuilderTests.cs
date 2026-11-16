@@ -47,14 +47,11 @@ public sealed class EligibilityCriteriaBundleBuilderTests
             ["ResearchStudy", "Group", "Library"],
             bundle.Entry.Select(e => e.Resource!.TypeName)
         );
-        Assert.All(
-            bundle.Entry,
-            e =>
-            {
-                Assert.Equal(Bundle.HTTPVerb.PUT, e.Request!.Method);
-                Assert.Equal($"{e.Resource!.TypeName}/{e.Resource.Id}", e.Request!.Url);
-            }
-        );
+        Assert.All(bundle.Entry, e =>
+        {
+            Assert.Equal(Bundle.HTTPVerb.PUT, e.Request!.Method);
+            Assert.Equal($"{e.Resource!.TypeName}/{e.Resource.Id}", e.Request!.Url);
+        });
 
         var study = Single<ResearchStudy>(bundle);
         var group = Single<Group>(bundle);
@@ -93,20 +90,17 @@ public sealed class EligibilityCriteriaBundleBuilderTests
         Assert.Equal("Ejection fraction below 40%", library.Title);
         Assert.Equal("ejection-fraction-below-40", library.Name);
         Assert.Equal(PublicationStatus.Active, library.Status);
-        Assert.Contains(
-            library.Type.Coding,
-            c =>
-                c.System == EligibilityCriteriaBundleBuilder.SqlQueryLibraryTypeSystem
-                && c.Code == EligibilityCriteriaBundleBuilder.SqlQueryLibraryTypeCode
+        Assert.Contains(library.Type.Coding, c =>
+            c.System == EligibilityCriteriaBundleBuilder.SqlQueryLibraryTypeSystem
+            && c.Code == EligibilityCriteriaBundleBuilder.SqlQueryLibraryTypeCode
         );
         // The dialect-agnostic content first (what GetSqlText reads back), then the dialect's own.
         Assert.Equal(
             [SqlContentType.DialectAgnostic, SqlContentType.For(SqlDialect.DuckDb)],
             library.Content.Select(c => c.ContentType)
         );
-        Assert.All(
-            library.Content,
-            c => Assert.Equal("SELECT patient_id FROM ef", Encoding.UTF8.GetString(c.Data!))
+        Assert.All(library.Content, c =>
+            Assert.Equal("SELECT patient_id FROM ef", Encoding.UTF8.GetString(c.Data!))
         );
         Assert.Equal("SELECT patient_id FROM ef", library.GetSqlText());
     }
@@ -153,9 +147,8 @@ public sealed class EligibilityCriteriaBundleBuilderTests
         Assert.Equal(
             "existing-study",
             Assert
-                .Single(
-                    group.Identifier,
-                    i => i.System == FhirVocabulary.UrlEligibilityGroupIdentifier
+                .Single(group.Identifier, i =>
+                    i.System == FhirVocabulary.UrlEligibilityGroupIdentifier
                 )
                 .Value
         );
