@@ -12,8 +12,8 @@
     <PackageVersion Include="DizUker.FhirIgConstants " Version="0.3.0-alpha.5" />
     <PackageVersion Include="DizUker.IgCodegen.Core" Version="0.3.0-alpha.5" />
     <PackageVersion Include="MailKit" Version="4.18.2" />
-    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="10.0.13" />
-    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="10.0.13" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="11.0.0" />
+    <PackageVersion Include="Microsoft.AspNetCore.Mvc.Testing" Version="11.0.0" />
     <PackageVersion
       Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore"
       Version="10.0.13"
