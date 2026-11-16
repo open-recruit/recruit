@@ -13,7 +13,7 @@
          stack traces (debugger, profilers) and less per-await overhead. -->
     <Features>$(Features);runtime-async=on</Features>
     <!-- x-release-please-start-version -->
-    <Version>11.2.0</Version>
+    <Version>11.2.1</Version>
     <!-- x-release-please-end -->
     <Company>miracum.org</Company>
     <Description>Patient recruitment on FHIR.</Description>
