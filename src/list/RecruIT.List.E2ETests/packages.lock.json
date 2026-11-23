@@ -880,7 +880,7 @@
           "OpenTelemetry.Exporter.OpenTelemetryProtocol": "[1.20.1, )",
           "OpenTelemetry.Exporter.Prometheus.AspNetCore": "[1.19.1-beta.1, )",
           "OpenTelemetry.Extensions.Hosting": "[1.20.1, )",
-          "RecruIT.FhirConstants": "[11.2.0, )",
+          "RecruIT.FhirConstants": "[11.2.1, )",
           "Slugify.Core": "[5.1.1, )"
         }
       },
